@@ -27,6 +27,7 @@ double rpmLimit = 2000; //ADC value
 double currentError = 0; //for P term
 double cumulativeError = 0; //for I term
 double previousError = 0; //for D term
+double derivativeError = 0; //for D term
 
 //error constants
 double Kp = 0.006;
@@ -39,6 +40,7 @@ double motorCurrent = 0; //DAC value
 int safety = 1; //safety latch for when RPM goes over limit. Need to reset esp32 to reset
 
 unsigned long savedTime = 0;
+unsigned long currentTime = 0;
 
 void setup() {
   // put your setup code here, to run once:
@@ -58,6 +60,7 @@ void loop() {
 //set ideal force
   //Events set to occur every 10 ms
   if ((millis()-savedTime)%10==0){
+    currentTime = millis();
     //insert code to set force 
     
     if ((millis()-savedTime)<=5000){
@@ -151,18 +154,20 @@ void loop() {
     previousError = currentError; //saves previous error
     currentError = (idealForce - sensorOutput)/4095*255; 
     cumulativeError = cumulativeError + currentError; //get total error
+    derivativeError = (currentError - previousError) / (millis()-currentTime);
     
     //apply error and limit motorCurrent to [0,255]
 
-    if (((motorCurrent + Kp* currentError + Ki * cumulativeError) <=255) && ((motorCurrent + Kp* currentError + Ki * cumulativeError) >=0)) {
+    if (((motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError) <=255) && ((motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError) >=0)) {
     motorCurrent = motorCurrent + Kp* currentError + Ki * cumulativeError;
     }
-    else if (motorCurrent + Kp* currentError + Ki * cumulativeError >255){
+    else if (motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError >255){
       motorCurrent = 255;
     }
-    else if (motorCurrent + Kp* currentError + Ki * cumulativeError <0){
+    else if (motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError<0){
       motorCurrent = 0;
 
     }
   }
+  
 }
