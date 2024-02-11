@@ -21,7 +21,7 @@ double b[5] = {0.213190813596054,   0.639572440777059,   0.639572440812586 ,  0.
 double a[5] = {1.000000000000000,  -2.918420946242358 ,  2.842919157868234,  -0.924327658974999};
 
 //software limit
-double rpmLimit = 2000; //ADC value
+double rpmLimit = 3800; //ADC value
 
 //error PID terms
 double currentError = 0; //for P term
@@ -30,9 +30,9 @@ double previousError = 0; //for D term
 double derivativeError = 0; //for D term
 
 //error constants
-double Kp = 0.006;
+double Kp = 0.009;
 double Ki = 0.000001;
-double Kd = 0.000001;
+double Kd = 0.0003;
 
 double idealForce = 0; //set force value
 double motorCurrent = 0; //DAC value 
@@ -40,7 +40,7 @@ double motorCurrent = 0; //DAC value
 int safety = 1; //safety latch for when RPM goes over limit. Need to reset esp32 to reset
 
 unsigned long savedTime = 0;
-unsigned long currentTime = 0;
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -60,7 +60,7 @@ void loop() {
 //set ideal force
   //Events set to occur every 10 ms
   if ((millis()-savedTime)%10==0){
-    currentTime = millis();
+    
     //insert code to set force 
     
     if ((millis()-savedTime)<=5000){
@@ -154,7 +154,7 @@ void loop() {
     previousError = currentError; //saves previous error
     currentError = (idealForce - sensorOutput)/4095*255; 
     cumulativeError = cumulativeError + currentError; //get total error
-    derivativeError = (currentError - previousError) / (millis()-currentTime);
+    derivativeError = (currentError - previousError);
     
     //apply error and limit motorCurrent to [0,255]
 
