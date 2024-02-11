@@ -10,11 +10,10 @@
 double yn1 = 0;
 double yn2 = 0;
 double yn3 = 0;
-double yn4 = 0; //unused
 double xn1 = 0;
 double xn2 = 0;
 double xn3 = 0;
-double xn4 = 0; //unused
+
 double sensorOutput = 0; //force sensor reading
 
 //filter coefficients
@@ -27,12 +26,12 @@ double rpmLimit = 2000; //ADC value
 //error PID terms
 double currentError = 0; //for P term
 double cumulativeError = 0; //for I term
-//double previousError = 0; //for D term
+double previousError = 0; //for D term
 
 //error constants
 double Kp = 0.006;
 double Ki = 0.000001;
-//double Kd = 0;
+double Kd = 0.000001;
 
 double idealForce = 0; //set force value
 double motorCurrent = 0; //DAC value 
@@ -92,12 +91,10 @@ void loop() {
     double yn = -a[1]*yn1 - a[2]*yn2 - a[3]*yn3 + b[0]*xn + b[1]*xn1 + b[2]*xn2 + b[3]*xn3;
 
     //saving past values for the difference equation
-    yn4 = yn3;
     yn3 = yn2;
     yn2 = yn1;
     yn1 = yn;
 
-    xn4 = xn3;
     xn3 = xn2;
     xn2 = xn1;
     xn1 = xn;
@@ -143,13 +140,17 @@ void loop() {
       safety = 0;
     }
 
+    if ((sensorOutput<=500) && (currentRead>=1000)) { //if sensor feels zero, stop giving current. Used to prevent the addition of force when finger isnt on properly.
+      safety = 0;
+    }
+
 
 
   
 //get Error
-   
-    currentError = (idealForce - sensorOutput)/4095*255;
-    cumulativeError = cumulativeError + currentError;
+    previousError = currentError; //saves previous error
+    currentError = (idealForce - sensorOutput)/4095*255; 
+    cumulativeError = cumulativeError + currentError; //get total error
     
     //apply error and limit motorCurrent to [0,255]
 
