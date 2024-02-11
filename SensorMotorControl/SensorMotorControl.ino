@@ -57,31 +57,14 @@ void setup() {
 
 void loop() {
 
-//set ideal force
+  
+}
+
+void function motorControl (int idealForce){
+  //set ideal force
   //Events set to occur every 10 ms
   if ((millis()-savedTime)%10==0){
-    
-    //insert code to set force 
-    
-    if ((millis()-savedTime)<=5000){
-      idealForce = 0; //Ideal sensor force, what the sensor should be reading
-    }
-    else if ((millis()-savedTime)<=10000){
-      idealForce = 1000; //Ideal sensor force, what the sensor should be reading
-    }
-    else if ((millis()-savedTime)<=15000){
-      idealForce = 1500; //Ideal sensor force, what the sensor should be reading
-    }
-    else if ((millis()-savedTime)<=20000){
-      idealForce = 1750; //Ideal sensor force, what the sensor should be reading
-    }
-    else if ((millis()-savedTime)<=25000){
-      idealForce = 1000; //Ideal sensor force, what the sensor should be reading
-    }
-    else {
-      idealForce = 0; //Ideal sensor force, what the sensor should be reading
-    }
-    //Serial.print("Ideal Force: ");
+  
     Serial.print(idealForce);
     Serial.print(",");
 
@@ -116,7 +99,6 @@ void loop() {
     Serial.print(sensorOutput);
     Serial.print(",");
 
-
 //Motor control
     
     // Read analog RPM values from Motor Controller
@@ -146,9 +128,6 @@ void loop() {
     if ((sensorOutput<=500) && (currentRead>=1000)) { //if sensor feels zero, stop giving current. Used to prevent the addition of force when finger isnt on properly.
       safety = 0;
     }
-
-
-
   
 //get Error
     previousError = currentError; //saves previous error
@@ -166,8 +145,6 @@ void loop() {
     }
     else if (motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError<0){
       motorCurrent = 0;
-
     }
   }
-  
 }
