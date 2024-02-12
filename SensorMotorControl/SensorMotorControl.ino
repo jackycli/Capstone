@@ -79,6 +79,10 @@ int range_int = 0;
 int repetitions_int = 0;
 int duration_int = 0;
 
+// prev current counters
+int prev_range = 0;
+
+
 int phase1_int = 0;
 int phase2_int = 0;
 int phase3_int = 0;
@@ -165,10 +169,11 @@ double Kd = 0.0003;
 double motorCurrent = 0; //DAC value 
 int safety = 1; //safety latch for when RPM or current (special case, see motorcontrol section) goes over limit. Need to reset esp32 to reset
 
-
+//double idealForceArray[9];
 
 double idealForce = 0; //set force value
 unsigned long savedTime = 0; //Used for specific timeing for sampling freq
+
 
 
 void setup() {
@@ -192,6 +197,64 @@ void setup() {
 }
 
 void loop() {
+
+    //Serial.println(range_int);
+    if(range_int != prev_range){
+    if (range_int==1){
+      double idealForceArray[] = {1};
+            shuffleArray(idealForceArray, sizeof(idealForceArray)/sizeof(idealForceArray[0]));
+      for (int i =0; i<sizeof(idealForceArray)/sizeof(idealForceArray[0]); i++){
+        Serial.print(idealForceArray[i]);
+        Serial.print(" ");
+      }
+    }
+    else if (range_int==2){
+      double idealForceArray[] = {1, 1.5, 2};
+            shuffleArray(idealForceArray, sizeof(idealForceArray)/sizeof(idealForceArray[0]));
+      for (int i =0; i<sizeof(idealForceArray)/sizeof(idealForceArray[0]); i++){
+        Serial.print(idealForceArray[i]);
+        Serial.print(" ");
+        }
+    }
+    else if (range_int==3){
+      double idealForceArray[] = {1, 1.5, 2, 2.5, 3};
+        shuffleArray(idealForceArray, sizeof(idealForceArray)/sizeof(idealForceArray[0]));
+      for (int i =0; i<sizeof(idealForceArray)/sizeof(idealForceArray[0]); i++){
+        Serial.print(idealForceArray[i]);
+        Serial.print(" ");
+        }
+    }
+    else if (range_int==4){
+      double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 3.5, 4};
+        shuffleArray(idealForceArray, sizeof(idealForceArray)/sizeof(idealForceArray[0]));
+      for (int i =0; i<sizeof(idealForceArray)/sizeof(idealForceArray[0]); i++){
+        Serial.print(idealForceArray[i]);
+        Serial.print(" ");
+        }
+    }
+    else if (range_int==5){
+      double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5};
+            shuffleArray(idealForceArray, sizeof(idealForceArray)/sizeof(idealForceArray[0]));
+      for (int i =0; i<sizeof(idealForceArray)/sizeof(idealForceArray[0]); i++){
+        Serial.print(idealForceArray[i]);
+        Serial.print(" ");
+        }
+    }
+    else{
+      Serial.print("Error");
+    }
+    prev_range = range_int;
+    Serial.println(" ");
+    }
+    
+    
+ 
+    
+      //Serial.println(".");
+   
+
+
+
     char command;
     // reading buttons
     backcurr = digitalRead(backbut); // keep in code
@@ -251,6 +314,7 @@ void loop() {
             break;
     }
   
+
 }
 
 // CALLBACK FUNCTIONS
@@ -262,7 +326,7 @@ void rangeCallback(uint16_t ran) {
     // convert string found at index 'ran' to int
     range_int = (range[ran]).toInt();
     //Serial.print("Range (N): 0.5-");
-    Serial.println(range_int);
+    //Serial.println(range_int);
 }
 
 void repetitionsCallback(uint16_t reps) {
@@ -465,5 +529,18 @@ void motorControl (int idealForce){
     else if (motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError<0){
       motorCurrent = 0;
     }
+  }
+}
+
+
+void shuffleArray(double arr[], int n) {
+  for (int i = n - 1; i > 0; i--) {
+    // Pick a random index from 0 to i
+    int j = random(0, i + 1);
+
+    // Swap arr[i] with the element at random index
+    double temp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = temp;
   }
 }
