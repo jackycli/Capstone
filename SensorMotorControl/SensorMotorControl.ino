@@ -175,17 +175,19 @@ void setup() {
   // Setup Serial Monitor
    Serial.begin(115200);
    menu.setupLcdWithMenu(0x27, mainMenu);
+
    // initialize the pushbuttons pin as an pull-up input
    pinMode(backbut, INPUT_PULLUP);
    pinMode(downbut, INPUT_PULLUP);
    pinMode(enterbut, INPUT_PULLUP);
    pinMode(upbut, INPUT_PULLUP);
 
-  //scaleing num (b) down by 1e-0x
+  //motorControl filter coefficient: scaleing numerator (b) down by 1e-0x
   for (int i = 0; i < (sizeof(b)/sizeof(b[0])); i++) {
     b[i] = b[i]*0.0001;
   }
   
+  //save start time
   savedTime = millis();
 }
 
