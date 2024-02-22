@@ -172,9 +172,13 @@ int safety = 1; //safety latch for when RPM or current (special case, see motorc
 //double idealForceArray[9];
 
 double idealForce = 0; //set force value
-unsigned long savedTime = 0; //Used for specific timeing for sampling freq
+unsigned long savedTime1 = 0; //Used for specific timeing for sampling freq
+unsigned long savedTime2 = 0;
+int lengthForceArray = 0;
+int counter1 = 0;
 
-
+int idealForceArray[9];
+int idealForceADC[9];
 
 void setup() {
   // Setup Serial Monitor
@@ -193,65 +197,138 @@ void setup() {
   }
   
   //save start time
-  savedTime = millis();
+  savedTime1 = millis();
 }
 
 void loop() {
 
     //Serial.println(range_int);
     if(range_int != prev_range){
+      //declaring
+
     if (range_int==1){
-      double idealForceArray[] = {1};
-            shuffleArray(idealForceArray, sizeof(idealForceArray)/sizeof(idealForceArray[0]));
-      for (int i =0; i<sizeof(idealForceArray)/sizeof(idealForceArray[0]); i++){
+      
+      double idealForceArray[] = {1, 0, 0, 0, 0, 0, 0, 0, 0};
+      
+      lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
+      shuffleArray(idealForceArray, lengthForceArray);
+      for (int i =0; i<lengthForceArray; i++){
         Serial.print(idealForceArray[i]);
+        Serial.print(" ");
+      }
+      Serial.println(" ");
+      for (int i =0; i<lengthForceArray; i++){
+        idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        Serial.print(idealForceADC[i]);
         Serial.print(" ");
       }
     }
     else if (range_int==2){
-      double idealForceArray[] = {1, 1.5, 2};
-            shuffleArray(idealForceArray, sizeof(idealForceArray)/sizeof(idealForceArray[0]));
-      for (int i =0; i<sizeof(idealForceArray)/sizeof(idealForceArray[0]); i++){
+      double idealForceArray[] = {1, 1.5, 2, 0, 0, 0, 0, 0, 0};
+      
+      lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
+      shuffleArray(idealForceArray, lengthForceArray);
+      for (int i =0; i<lengthForceArray; i++){
         Serial.print(idealForceArray[i]);
         Serial.print(" ");
-        }
+      }
+      Serial.println(" ");
+      for (int i =0; i<lengthForceArray; i++){
+        idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        Serial.print(idealForceADC[i]);
+        Serial.print(" ");
+      }
     }
     else if (range_int==3){
-      double idealForceArray[] = {1, 1.5, 2, 2.5, 3};
-        shuffleArray(idealForceArray, sizeof(idealForceArray)/sizeof(idealForceArray[0]));
-      for (int i =0; i<sizeof(idealForceArray)/sizeof(idealForceArray[0]); i++){
+      double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 0, 0, 0, 0};
+      
+      lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
+      shuffleArray(idealForceArray, lengthForceArray);
+      for (int i =0; i<lengthForceArray; i++){
         Serial.print(idealForceArray[i]);
         Serial.print(" ");
-        }
+      }
+      Serial.println(" ");
+      for (int i =0; i<lengthForceArray; i++){
+        idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        Serial.print(idealForceADC[i]);
+        Serial.print(" ");
+      }
     }
     else if (range_int==4){
-      double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 3.5, 4};
-        shuffleArray(idealForceArray, sizeof(idealForceArray)/sizeof(idealForceArray[0]));
-      for (int i =0; i<sizeof(idealForceArray)/sizeof(idealForceArray[0]); i++){
+      double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 3.5, 4, 0, 0};
+      
+      lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
+      shuffleArray(idealForceArray, lengthForceArray);
+      for (int i =0; i<lengthForceArray; i++){
         Serial.print(idealForceArray[i]);
         Serial.print(" ");
-        }
+      }
+      Serial.println(" ");
+      for (int i =0; i<lengthForceArray; i++){
+        idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        Serial.print(idealForceADC[i]);
+        Serial.print(" ");
+      }
     }
     else if (range_int==5){
       double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5};
-            shuffleArray(idealForceArray, sizeof(idealForceArray)/sizeof(idealForceArray[0]));
-      for (int i =0; i<sizeof(idealForceArray)/sizeof(idealForceArray[0]); i++){
+      
+      lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
+      shuffleArray(idealForceArray, lengthForceArray);
+      for (int i =0; i<lengthForceArray; i++){
         Serial.print(idealForceArray[i]);
         Serial.print(" ");
-        }
+      }
+      Serial.println(" ");
+      for (int i =0; i<lengthForceArray; i++){
+        idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        Serial.print(idealForceADC[i]);
+        Serial.print(" ");
+      }
     }
     else{
       Serial.print("Error");
     }
+
     prev_range = range_int;
     Serial.println(" ");
+
+    savedTime2 = millis();
+    counter1 = 0;
+
     }
-    
-    
- 
-    
-      //Serial.println(".");
-   
+  
+  
+  //sending newton values into ADC and then send to motor control
+  if (((millis() - savedTime2) >= 2000) && (lengthForceArray>0)){
+    if ((counter1<lengthForceArray) && (idealForceADC[counter1]> 0)){
+      idealForce = idealForceADC[counter1];
+      counter1++;
+    }
+    else if ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){
+        while ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){
+          counter1++;
+        }
+        idealForce = idealForceADC[counter1];
+        if (counter1<lengthForceArray-1){
+          counter1++;
+        }
+        
+      
+    }
+    else {
+      idealForce = 0;
+    }
+
+      savedTime2 = millis();
+  }
+  Serial.print(idealForce);
+  Serial.print(",");
+  Serial.print(counter1);
+  Serial.println(" ");
+  
+  //motorControl(idealForce);
 
 
 
@@ -448,7 +525,7 @@ void phase3Display() {
 void motorControl (int idealForce){
   //set ideal force
   //Events set to occur every 10 ms
-  if ((millis()-savedTime)%10==0){
+  if ((millis()-savedTime1)%10==0){
   
     Serial.print(idealForce);
     Serial.print(",");
