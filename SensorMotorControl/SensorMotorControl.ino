@@ -323,12 +323,9 @@ void loop() {
 
       savedTime2 = millis();
   }
-  Serial.print(idealForce);
-  Serial.print(",");
-  Serial.print(counter1);
-  Serial.println(" ");
+
   
-  //motorControl(idealForce);
+  motorControl(idealForce);
 
 
 
