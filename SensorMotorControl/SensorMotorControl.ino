@@ -154,7 +154,7 @@ double a[5] = {1.000000000000000,  -2.918420946242358 ,  2.842919157868234,  -0.
 
 //motorControl software limit
 double rpmLimit = 3800; //RPM safety ADC value
-double currentLimit = 1000; //Current safety ADC value
+double currentLimit = 2000; //Current safety ADC value
 //motorControl error PID terms
 double currentError = 0; //for P term
 double cumulativeError = 0; //for I term
@@ -212,15 +212,15 @@ void loop() {
       
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
-      for (int i =0; i<lengthForceArray; i++){
-        Serial.print(idealForceArray[i]);
-        Serial.print(" ");
-      }
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
-        Serial.print(idealForceADC[i]);
-        Serial.print(" ");
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
     else if (range_int==2){
@@ -228,15 +228,15 @@ void loop() {
       
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
-      for (int i =0; i<lengthForceArray; i++){
-        Serial.print(idealForceArray[i]);
-        Serial.print(" ");
-      }
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
-        Serial.print(idealForceADC[i]);
-        Serial.print(" ");
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
     else if (range_int==3){
@@ -244,15 +244,15 @@ void loop() {
       
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
-      for (int i =0; i<lengthForceArray; i++){
-        Serial.print(idealForceArray[i]);
-        Serial.print(" ");
-      }
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
-        Serial.print(idealForceADC[i]);
-        Serial.print(" ");
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
     else if (range_int==4){
@@ -260,15 +260,15 @@ void loop() {
       
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
-      for (int i =0; i<lengthForceArray; i++){
-        Serial.print(idealForceArray[i]);
-        Serial.print(" ");
-      }
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
-        Serial.print(idealForceADC[i]);
-        Serial.print(" ");
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
     else if (range_int==5){
@@ -276,15 +276,15 @@ void loop() {
       
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
-      for (int i =0; i<lengthForceArray; i++){
-        Serial.print(idealForceArray[i]);
-        Serial.print(" ");
-      }
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
-        Serial.print(idealForceADC[i]);
-        Serial.print(" ");
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
     else{
@@ -301,7 +301,7 @@ void loop() {
   
   
   //sending newton values into ADC and then send to motor control
-  if (((millis() - savedTime2) >= 2000) && (lengthForceArray>0)){
+  if (((millis() - savedTime2) >= 5000) && (lengthForceArray>0)){
     if ((counter1<lengthForceArray) && (idealForceADC[counter1]> 0)){
       idealForce = idealForceADC[counter1];
       counter1++;
@@ -523,7 +523,10 @@ void motorControl (int idealForce){
   //set ideal force
   //Events set to occur every 10 ms
   if ((millis()-savedTime1)%10==0){
-  
+    //sanity check
+    if (idealForce<0){
+      idealForce = 0;
+    }
     Serial.print(idealForce);
     Serial.print(",");
 
