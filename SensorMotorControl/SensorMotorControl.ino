@@ -162,9 +162,9 @@ double previousError = 0; //for D term
 double derivativeError = 0; //for D term
 
 //motorControl error constants
-double Kp = 0.009;
+double Kp = 0.010;
 double Ki = 0.000001;
-double Kd = 0.0003;
+double Kd = 0.00001;
 //motorControl items
 double motorCurrent = 0; //DAC value 
 int safety = 1; //safety latch for when RPM or current (special case, see motorcontrol section) goes over limit. Need to reset esp32 to reset
@@ -592,8 +592,15 @@ void motorControl (int idealForce){
   
 //get Error
     previousError = currentError; //saves previous error
+
     currentError = (idealForce - sensorOutput)/4095*255; 
-    cumulativeError = cumulativeError + currentError; //get total error
+  
+    if (idealForce == 0){ //if statement used to prevent inconsistent controls if idealForce set to 0 for sometime due to the integral controller adding up wrong error. Force sensor does not stay at 0 when Idealforce =0.
+      cumulativeError = cumulativeError + 0;
+    }
+    else{
+      cumulativeError = cumulativeError + currentError; //get total error
+    }
     derivativeError = (currentError - previousError); //difference between current and past error
     
     //apply error and limit motorCurrent to [0,255]
