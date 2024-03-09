@@ -149,8 +149,8 @@ double xn3 = 0;
 double sensorOutput = 0; //force sensor reading
 
 //motorControl filter coefficients
-double b[5] = {0.213190813596054,   0.639572440777059,   0.639572440812586 ,  0.213190813584951};
-double a[5] = {1.000000000000000,  -2.918420946242358 ,  2.842919157868234,  -0.924327658974999};
+double b[5] = {0.213398512073359,   0.640195536174559,   0.640195536307786 ,  0.213398512030061};
+double a[5] = {1.000000000000000,  -2.918393191953221 ,  2.842867652821765,  -0.924303742058885};
 
 //motorControl software limit
 double rpmLimit = 3800; //RPM safety ADC value
@@ -162,13 +162,14 @@ double previousError = 0; //for D term
 double derivativeError = 0; //for D term
 
 //motorControl error constants
-double Kp = 0.010;
-double Ki = 0.000001;
-double Kd = 0.00001;
+double Kp = 0.008; 
+double Ki = 0.000001;  
+double Kd = 0.0000001;
 //motorControl items
 double motorCurrent = 0; //DAC value 
 int safety = 1; //safety latch for when RPM or current (special case, see motorcontrol section) goes over limit. Need to reset esp32 to reset
 
+//double idealForceArray[9];
 
 double idealForce = 0; //set force value
 unsigned long savedTime1 = 0; //Used for specific timeing for sampling freq
@@ -201,153 +202,194 @@ void setup() {
 
 void loop() {
 
-  
-    //if past range input != new range input --------------------------------------------------
+    //Serial.println(range_int);
     if(range_int != prev_range){
-    
-    if (range_int==1){ //look up tables depending on what was the input
+      //declaring
+
+    if (range_int==1){
+      
       double idealForceArray[] = {1, 0, 0, 0, 0, 0, 0, 0, 0};
+      
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
-      shuffleArray(idealForceArray, lengthForceArray); //randomizes the array.
+      shuffleArray(idealForceArray, lengthForceArray);
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
-        idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438; //quadratic line of best fit to change Force into ADC Value based on previous testing !! can always be changed.
+        idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
-    else if (range_int==2){ //look up tables depending on what was the input
+    else if (range_int==2){
       double idealForceArray[] = {1, 1.5, 2, 0, 0, 0, 0, 0, 0};
+      
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
-    else if (range_int==3){ //look up tables depending on what was the input
+    else if (range_int==3){
       double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 0, 0, 0, 0};
+      
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
-    else if (range_int==4){ //look up tables depending on what was the input
+    else if (range_int==4){
       double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 3.5, 4, 0, 0};
+      
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
-    else if (range_int==5){ //look up tables depending on what was the input
+    else if (range_int==5){
       double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5};
+      
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
     else{
       Serial.print("Error");
     }
-    
-    prev_range = range_int; //past input = new input
+
+    prev_range = range_int;
     Serial.println(" ");
-    
-    savedTime2 = millis(); //saves time
+
+    savedTime2 = millis();
     counter1 = 0;
-    }//----------------------------------------------------------------------
+
+    }
   
   
   //sending newton values into ADC and then send to motor control
-  if (((millis() - savedTime2) >= 5000) && (lengthForceArray>0)){ //every 5 seconds, and if a range has been chosen, do this:
-    if ((counter1<lengthForceArray) && (idealForceADC[counter1]> 0)){ //if counter is less than total length of the look up table, and if the Force value is greater than 0, do this:
-      idealForce = idealForceADC[counter1];     //set ideal force to value i in look up table
-      counter1++;             //increment counter
+  if (((millis() - savedTime2) >= 5000) && (lengthForceArray>0)){
+    if ((counter1<lengthForceArray) && (idealForceADC[counter1]> 0)){
+      idealForce = idealForceADC[counter1];
+      counter1++;
     }
-    else if ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){ //else if Force value is less than 0, and counter is less than length-1, skip it until we hit a positive Force value
-        while ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){ //skipping part
+    else if ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){
+        while ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){
           counter1++;
         }
-        idealForce = idealForceADC[counter1]; //prints first non zero value
-        if (counter1<lengthForceArray-1){//increment counter right after
+        idealForce = idealForceADC[counter1];
+        if (counter1<lengthForceArray-1){
           counter1++;
         }
+        
+      
     }
     else {
-      idealForce = 0; //else Set force to 0, usually after the sequence is finished.
+      idealForce = 0;
     }
 
-      savedTime2 = millis(); //save new time
+      savedTime2 = millis();
   }
 
   
-  //motor control always on right now, need to seperate sensor reading and motor control
   motorControl(idealForce);
 
-  //UI STUFF ----------------------------------------
-  char button_Input;
-  // reading buttons
-  backcurr = digitalRead(backbut); // keep in code
-  downcurr = digitalRead(downbut);
-  entercurr = digitalRead(enterbut);
-  upcurr = digitalRead(upbut);
-  //Serial.print(backcurr);
-  if(backlast == HIGH && backcurr == LOW)
-    button_Input = 55;
-    // save the last state
-  backlast = backcurr;
 
-  if(downlast == HIGH && downcurr == LOW)
-    button_Input = 50;
-    // save the last state
-  downlast = downcurr;   
 
-  if(enterlast == HIGH && entercurr == LOW)
-    button_Input = 53;
-    // save the last state
-  //enterlast = entercurr;
+    char command;
+    // reading buttons
+    backcurr = digitalRead(backbut); // keep in code
+    downcurr = digitalRead(downbut);
+    entercurr = digitalRead(enterbut);
+    upcurr = digitalRead(upbut);
+    //Serial.print(backcurr);
+    if(backlast == HIGH && backcurr == LOW)
+     command = 55;
+      // save the last state
+    backlast = backcurr;
 
-  if(uplast == HIGH && upcurr == LOW)
-    button_Input = 56;
-    // save the last state
-  uplast = upcurr; 
+    if(downlast == HIGH && downcurr == LOW)
+      command = 50;
+      // save the last state
+   downlast = downcurr;   
 
-  switch (button_Input) {
-      case UP:
-          menu.up();
-          menu.right();
-          break;
-      case DOWN:
-          menu.down();
-          menu.left();
-          break;
-      case LEFT:
-          menu.left();
-          break;
-      case RIGHT:
-          menu.right();
-          break;
-      case ENTER:  // Press enter to go to edit mode : for ItemInput
-          menu.enter();
-    
-          break;
-      case BACK:
-          menu.back();
-          break;
-      case CLEAR:
-          menu.clear();
-          break;
-      case BACKSPACE:  // Remove one character from tail
-          menu.backspace();
-          break;
-      default:
-          break;
-  }
-}//---------------------------------------------------------
+    if(enterlast == HIGH && entercurr == LOW)
+     command = 53;
+      // save the last state
+   //enterlast = entercurr;
+
+    if(uplast == HIGH && upcurr == LOW)
+     command = 56;
+      // save the last state
+   uplast = upcurr; 
+
+    switch (command) {
+        case UP:
+            menu.up();
+            menu.right();
+            break;
+        case DOWN:
+            menu.down();
+            menu.left();
+            break;
+        case LEFT:
+            menu.left();
+            break;
+        case RIGHT:
+            menu.right();
+            break;
+        case ENTER:  // Press enter to go to edit mode : for ItemInput
+            menu.enter();
+      
+            break;
+        case BACK:
+            menu.back();
+            break;
+        case CLEAR:
+            menu.clear();
+            break;
+        case BACKSPACE:  // Remove one character from tail
+            menu.backspace();
+            break;
+        default:
+            break;
+    }
+  
+
+}
 
 // CALLBACK FUNCTIONS
 void rangeCallback(uint16_t ran) {
@@ -476,10 +518,18 @@ void phase3Display() {
   menu.show();
 }
 
+// MOTOR CONTROL
+void motorControl (int idealForce){
+  //set ideal force
+  //Events set to occur every 10 ms
+  if ((millis()-savedTime1)%10==0){
+    //sanity check
+    if (idealForce<0){
+      idealForce = 0;
+    }
+    Serial.print(idealForce);
+    Serial.print(",");
 
-
-void sensorRead(){
-  
 //Sensor Read
      double xn = analogRead(SENSORREADPIN);
     //output value
@@ -509,23 +559,6 @@ void sensorRead(){
       sensorOutput = 0;
     }
     Serial.print(sensorOutput);
-    Serial.print(",");
-  
-}
-
-
-// MOTOR CONTROL
-void motorControl (int idealForce){
-  //set ideal force
-  //Events set to occur every 10 ms
-  if ((millis()-savedTime1)%10==0){
-    //sanity check
-    if (idealForce<0){
-      idealForce = 0;
-    }
-
-    sensorRead();
-    Serial.print(idealForce);
     Serial.print(",");
 
 //Motor control
