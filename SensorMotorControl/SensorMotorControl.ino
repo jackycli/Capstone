@@ -324,69 +324,69 @@ void loop() {
       savedTime2 = millis();
   }
 
-  
+  sensorRead();
   motorControl(idealForce);
 
 
+  //UI Control Loop
+  char command;
+  // reading buttons
+  backcurr = digitalRead(backbut); // keep in code
+  downcurr = digitalRead(downbut);
+  entercurr = digitalRead(enterbut);
+  upcurr = digitalRead(upbut);
+  //Serial.print(backcurr);
+  if(backlast == HIGH && backcurr == LOW)
+    command = 55;
+    // save the last state
+  backlast = backcurr;
 
-    char command;
-    // reading buttons
-    backcurr = digitalRead(backbut); // keep in code
-    downcurr = digitalRead(downbut);
-    entercurr = digitalRead(enterbut);
-    upcurr = digitalRead(upbut);
-    //Serial.print(backcurr);
-    if(backlast == HIGH && backcurr == LOW)
-     command = 55;
-      // save the last state
-    backlast = backcurr;
+  if(downlast == HIGH && downcurr == LOW)
+    command = 50;
+    // save the last state
+  downlast = downcurr;   
 
-    if(downlast == HIGH && downcurr == LOW)
-      command = 50;
-      // save the last state
-   downlast = downcurr;   
+  if(enterlast == HIGH && entercurr == LOW)
+    command = 53;
+    // save the last state
+  //enterlast = entercurr;
 
-    if(enterlast == HIGH && entercurr == LOW)
-     command = 53;
-      // save the last state
-   //enterlast = entercurr;
+  if(uplast == HIGH && upcurr == LOW)
+    command = 56;
+    // save the last state
+  uplast = upcurr; 
 
-    if(uplast == HIGH && upcurr == LOW)
-     command = 56;
-      // save the last state
-   uplast = upcurr; 
-
-    switch (command) {
-        case UP:
-            menu.up();
-            menu.right();
-            break;
-        case DOWN:
-            menu.down();
-            menu.left();
-            break;
-        case LEFT:
-            menu.left();
-            break;
-        case RIGHT:
-            menu.right();
-            break;
-        case ENTER:  // Press enter to go to edit mode : for ItemInput
-            menu.enter();
-      
-            break;
-        case BACK:
-            menu.back();
-            break;
-        case CLEAR:
-            menu.clear();
-            break;
-        case BACKSPACE:  // Remove one character from tail
-            menu.backspace();
-            break;
-        default:
-            break;
-    }
+  switch (command) {
+    case UP:
+        menu.up();
+        menu.right();
+        break;
+    case DOWN:
+        menu.down();
+        menu.left();
+        break;
+    case LEFT:
+        menu.left();
+        break;
+    case RIGHT:
+        menu.right();
+        break;
+    case ENTER:  // Press enter to go to edit mode : for ItemInput
+        menu.enter();
+  
+        break;
+    case BACK:
+        menu.back();
+        break;
+    case CLEAR:
+        menu.clear();
+        break;
+    case BACKSPACE:  // Remove one character from tail
+        menu.backspace();
+        break;
+    default:
+        break;
+  }
   
 
 }
@@ -518,8 +518,8 @@ void phase3Display() {
   menu.show();
 }
 
-// MOTOR CONTROL
-void motorControl (int idealForce){
+// Sensor Read
+void sensorRead(){
   //set ideal force
   //Events set to occur every 10 ms
   if ((millis()-savedTime1)%10==0){
@@ -531,7 +531,7 @@ void motorControl (int idealForce){
     Serial.print(",");
 
 //Sensor Read
-     double xn = analogRead(SENSORREADPIN);
+    double xn = analogRead(SENSORREADPIN);
     //output value
     //4th order difference equation - based on matlab filter order
     //double yn = -a[1]*yn1 - a[2]*yn2 - a[3]*yn3 - a[4]*yn4 + b[0]*xn + b[1]*xn1 + b[2]*xn2 + b[3]*xn3 + b[4]*xn4;
@@ -560,62 +560,65 @@ void motorControl (int idealForce){
     }
     Serial.print(sensorOutput);
     Serial.print(",");
-
-//Motor control
-    
-    //Read analog RPM values from Motor Controller
-    //Serial.print("Digital RPM Value = ");
-    int rpmRead = analogRead(RPMREADPIN);
-    // Serial.print("RPM Read Value: ");
-    // Serial.println(rpmRead);
-  
-    //Read analog current values from Motor Controller
-    //Serial.print("Digital Current Value = ");
-    int currentRead = analogRead(CURRENTREADPIN);
-    //Serial.print("Current Read Value: ");
-    //Serial.println(currentRead);
-
-    //only run of RPM is within bounds
-   if ((rpmRead <= rpmLimit) && (rpmRead >=-rpmLimit) && (safety ==1)) {
-      analogWrite(MOTORINPUTPIN,int(motorCurrent));
-      Serial.println(int(motorCurrent));   
-    }
-    else {
-      analogWrite(MOTORINPUTPIN,0);
-      Serial.println("SAFETY");  
-      safety = 0; //Safety Latch
-    }
-    //if sensor feels zero when supplied current, stop current from growing. Used to prevent the addition of force when finger isnt on properly.
-    if ((sensorOutput<=500) && (currentRead>=currentLimit)) { 
-      safety = 0; //Safety Latch
-    }
-  
-//get Error
-    previousError = currentError; //saves previous error
-
-    currentError = (idealForce - sensorOutput)/4095*255; 
-  
-    if (idealForce == 0){ //if statement used to prevent inconsistent controls if idealForce set to 0 for sometime due to the integral controller adding up wrong error. Force sensor does not stay at 0 when Idealforce =0.
-      cumulativeError = cumulativeError + 0;
-    }
-    else{
-      cumulativeError = cumulativeError + currentError; //get total error
-    }
-    derivativeError = (currentError - previousError); //difference between current and past error
-    
-    //apply error and limit motorCurrent to [0,255]
-    if (((motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError) <=255) && ((motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError) >=0)) {
-    motorCurrent = motorCurrent + Kp* currentError + Ki * cumulativeError;
-    }
-    else if (motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError >255){
-      motorCurrent = 255;
-    }
-    else if (motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError<0){
-      motorCurrent = 0;
-    }
   }
 }
 
+//MOTOR CONTROL
+void motorControl (int idealForce){
+  //Motor control
+    if ((millis()-savedTime1)%10==0){
+      //Read analog RPM values from Motor Controller
+      //Serial.print("Digital RPM Value = ");
+      int rpmRead = analogRead(RPMREADPIN);
+      // Serial.print("RPM Read Value: ");
+      // Serial.println(rpmRead);
+    
+      //Read analog current values from Motor Controller
+      //Serial.print("Digital Current Value = ");
+      int currentRead = analogRead(CURRENTREADPIN);
+      //Serial.print("Current Read Value: ");
+      //Serial.println(currentRead);
+
+      //only run of RPM is within bounds
+      if ((rpmRead <= rpmLimit) && (rpmRead >=-rpmLimit) && (safety ==1)) {
+        analogWrite(MOTORINPUTPIN,int(motorCurrent));
+        Serial.println(int(motorCurrent));   
+      }
+      else {
+        analogWrite(MOTORINPUTPIN,0);
+        Serial.println("SAFETY");  
+        safety = 0; //Safety Latch
+      }
+      //if sensor feels zero when supplied current, stop current from growing. Used to prevent the addition of force when finger isnt on properly.
+      if ((sensorOutput<=500) && (currentRead>=currentLimit)) { 
+        safety = 0; //Safety Latch
+      }
+    
+      //get Error
+      previousError = currentError; //saves previous error
+
+      currentError = (idealForce - sensorOutput)/4095*255; 
+    
+      if (idealForce == 0){ //if statement used to prevent inconsistent controls if idealForce set to 0 for sometime due to the integral controller adding up wrong error. Force sensor does not stay at 0 when Idealforce =0.
+        cumulativeError = cumulativeError + 0;
+      }
+      else{
+        cumulativeError = cumulativeError + currentError; //get total error
+      }
+      derivativeError = (currentError - previousError); //difference between current and past error
+      
+      //apply error and limit motorCurrent to [0,255]
+      if (((motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError) <=255) && ((motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError) >=0)) {
+      motorCurrent = motorCurrent + Kp* currentError + Ki * cumulativeError;
+      }
+      else if (motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError >255){
+        motorCurrent = 255;
+      }
+      else if (motorCurrent + Kp* currentError + Ki * cumulativeError + Kd * derivativeError<0){
+        motorCurrent = 0;
+      }
+  }
+}
 
 void shuffleArray(double arr[], int n) {
   for (int i = n - 1; i > 0; i--) {
