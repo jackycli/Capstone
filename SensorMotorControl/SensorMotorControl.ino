@@ -324,6 +324,7 @@ void loop() {
       savedTime2 = millis();
   }
 
+<<<<<<< HEAD
   sensorRead();
   motorControl(idealForce);
 
@@ -340,22 +341,31 @@ void loop() {
     command = 55;
     // save the last state
   backlast = backcurr;
+=======
+  
+  motorControl(idealForce);
 
-  if(downlast == HIGH && downcurr == LOW)
-    command = 50;
-    // save the last state
-  downlast = downcurr;   
+>>>>>>> parent of 92ea32c (Commenting and formatting)
 
-  if(enterlast == HIGH && entercurr == LOW)
-    command = 53;
-    // save the last state
-  //enterlast = entercurr;
 
-  if(uplast == HIGH && upcurr == LOW)
-    command = 56;
-    // save the last state
-  uplast = upcurr; 
+    char command;
+    // reading buttons
+    backcurr = digitalRead(backbut); // keep in code
+    downcurr = digitalRead(downbut);
+    entercurr = digitalRead(enterbut);
+    upcurr = digitalRead(upbut);
+    //Serial.print(backcurr);
+    if(backlast == HIGH && backcurr == LOW)
+     command = 55;
+      // save the last state
+    backlast = backcurr;
 
+    if(downlast == HIGH && downcurr == LOW)
+      command = 50;
+      // save the last state
+   downlast = downcurr;   
+
+<<<<<<< HEAD
   switch (command) {
     case UP:
         menu.up();
@@ -387,6 +397,49 @@ void loop() {
     default:
         break;
   }
+=======
+    if(enterlast == HIGH && entercurr == LOW)
+     command = 53;
+      // save the last state
+   //enterlast = entercurr;
+
+    if(uplast == HIGH && upcurr == LOW)
+     command = 56;
+      // save the last state
+   uplast = upcurr; 
+
+    switch (command) {
+        case UP:
+            menu.up();
+            menu.right();
+            break;
+        case DOWN:
+            menu.down();
+            menu.left();
+            break;
+        case LEFT:
+            menu.left();
+            break;
+        case RIGHT:
+            menu.right();
+            break;
+        case ENTER:  // Press enter to go to edit mode : for ItemInput
+            menu.enter();
+      
+            break;
+        case BACK:
+            menu.back();
+            break;
+        case CLEAR:
+            menu.clear();
+            break;
+        case BACKSPACE:  // Remove one character from tail
+            menu.backspace();
+            break;
+        default:
+            break;
+    }
+>>>>>>> parent of 92ea32c (Commenting and formatting)
   
 
 }
