@@ -325,6 +325,7 @@ void loop() {
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   sensorRead();
   motorControl(idealForce);
 
@@ -398,6 +399,30 @@ void loop() {
         break;
   }
 =======
+=======
+  
+  motorControl(idealForce);
+
+
+
+    char command;
+    // reading buttons
+    backcurr = digitalRead(backbut); // keep in code
+    downcurr = digitalRead(downbut);
+    entercurr = digitalRead(enterbut);
+    upcurr = digitalRead(upbut);
+    //Serial.print(backcurr);
+    if(backlast == HIGH && backcurr == LOW)
+     command = 55;
+      // save the last state
+    backlast = backcurr;
+
+    if(downlast == HIGH && downcurr == LOW)
+      command = 50;
+      // save the last state
+   downlast = downcurr;   
+
+>>>>>>> parent of 92ea32c (Commenting and formatting)
     if(enterlast == HIGH && entercurr == LOW)
      command = 53;
       // save the last state
@@ -439,6 +464,9 @@ void loop() {
         default:
             break;
     }
+<<<<<<< HEAD
+>>>>>>> parent of 92ea32c (Commenting and formatting)
+=======
 >>>>>>> parent of 92ea32c (Commenting and formatting)
   
 
