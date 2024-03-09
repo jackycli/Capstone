@@ -154,7 +154,7 @@ double a[5] = {1.000000000000000,  -2.918420946242358 ,  2.842919157868234,  -0.
 
 //motorControl software limit
 double rpmLimit = 3800; //RPM safety ADC value
-double currentLimit = 2000; //Current safety ADC value
+double currentLimit = 3000; //Current safety ADC value
 //motorControl error PID terms
 double currentError = 0; //for P term
 double cumulativeError = 0; //for I term
@@ -301,7 +301,7 @@ void loop() {
   
   
   //sending newton values into ADC and then send to motor control
-  if (((millis() - savedTime2) >= 5000) && (lengthForceArray>0)){
+  if (((millis() - savedTime2) >= 3000) && (lengthForceArray>0)){
     if ((counter1<lengthForceArray) && (idealForceADC[counter1]> 0)){
       idealForce = idealForceADC[counter1];
       counter1++;
