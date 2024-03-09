@@ -284,7 +284,7 @@ void loop() {
       savedTime2 = millis(); //save new time
   }
 
-  sensorRead();
+  
   //motor control always on right now, need to seperate sensor reading and motor control
   motorControl(idealForce);
 
@@ -479,7 +479,7 @@ void phase3Display() {
 
 
 void sensorRead(){
-  if ((millis()-savedTime1)%10==0){
+  
 //Sensor Read
      double xn = analogRead(SENSORREADPIN);
     //output value
@@ -508,8 +508,9 @@ void sensorRead(){
     else if (yn<0){
       sensorOutput = 0;
     }
-
-  }
+    Serial.print(sensorOutput);
+    Serial.print(",");
+  
 }
 
 
@@ -522,10 +523,11 @@ void motorControl (int idealForce){
     if (idealForce<0){
       idealForce = 0;
     }
+
+    sensorRead();
     Serial.print(idealForce);
     Serial.print(",");
-    Serial.print(sensorOutput);
-    Serial.print(",");
+
 //Motor control
     
     //Read analog RPM values from Motor Controller
