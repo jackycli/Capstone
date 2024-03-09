@@ -289,7 +289,7 @@ void loop() {
   motorControl(idealForce);
 
   //UI STUFF ----------------------------------------
-  char command;
+  char button_Input;
   // reading buttons
   backcurr = digitalRead(backbut); // keep in code
   downcurr = digitalRead(downbut);
@@ -297,26 +297,26 @@ void loop() {
   upcurr = digitalRead(upbut);
   //Serial.print(backcurr);
   if(backlast == HIGH && backcurr == LOW)
-    command = 55;
+    button_Input = 55;
     // save the last state
   backlast = backcurr;
 
   if(downlast == HIGH && downcurr == LOW)
-    command = 50;
+    button_Input = 50;
     // save the last state
   downlast = downcurr;   
 
   if(enterlast == HIGH && entercurr == LOW)
-    command = 53;
+    button_Input = 53;
     // save the last state
   //enterlast = entercurr;
 
   if(uplast == HIGH && upcurr == LOW)
-    command = 56;
+    button_Input = 56;
     // save the last state
   uplast = upcurr; 
 
-  switch (command) {
+  switch (button_Input) {
       case UP:
           menu.up();
           menu.right();
