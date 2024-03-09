@@ -169,7 +169,6 @@ double Kd = 0.00001;
 double motorCurrent = 0; //DAC value 
 int safety = 1; //safety latch for when RPM or current (special case, see motorcontrol section) goes over limit. Need to reset esp32 to reset
 
-//double idealForceArray[9];
 
 double idealForce = 0; //set force value
 unsigned long savedTime1 = 0; //Used for specific timeing for sampling freq
@@ -285,6 +284,7 @@ void loop() {
       savedTime2 = millis(); //save new time
   }
 
+  sensorRead();
   //motor control always on right now, need to seperate sensor reading and motor control
   motorControl(idealForce);
 
@@ -476,18 +476,10 @@ void phase3Display() {
   menu.show();
 }
 
-// MOTOR CONTROL
-void motorControl (int idealForce){
-  //set ideal force
-  //Events set to occur every 10 ms
-  if ((millis()-savedTime1)%10==0){
-    //sanity check
-    if (idealForce<0){
-      idealForce = 0;
-    }
-    Serial.print(idealForce);
-    Serial.print(",");
 
+
+void sensorRead(){
+  if ((millis()-savedTime1)%10==0){
 //Sensor Read
      double xn = analogRead(SENSORREADPIN);
     //output value
@@ -516,9 +508,24 @@ void motorControl (int idealForce){
     else if (yn<0){
       sensorOutput = 0;
     }
+
+  }
+}
+
+
+// MOTOR CONTROL
+void motorControl (int idealForce){
+  //set ideal force
+  //Events set to occur every 10 ms
+  if ((millis()-savedTime1)%10==0){
+    //sanity check
+    if (idealForce<0){
+      idealForce = 0;
+    }
+    Serial.print(idealForce);
+    Serial.print(",");
     Serial.print(sensorOutput);
     Serial.print(",");
-
 //Motor control
     
     //Read analog RPM values from Motor Controller
