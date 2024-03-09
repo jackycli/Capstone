@@ -264,17 +264,14 @@ void loop() {
   
   
   //sending newton values into ADC and then send to motor control
-<<<<<<< HEAD
   if (((millis() - savedTime2) >= 3000) && (lengthForceArray>0)){
     if ((counter1<lengthForceArray) && (idealForceADC[counter1]> 0)){
       idealForce = idealForceADC[counter1];
       counter1++;
-=======
   if (((millis() - savedTime2) >= 5000) && (lengthForceArray>0)){ //every 5 seconds, and if a range has been chosen, do this:
     if ((counter1<lengthForceArray) && (idealForceADC[counter1]> 0)){ //if counter is less than total length of the look up table, and if the Force value is greater than 0, do this:
       idealForce = idealForceADC[counter1];     //set ideal force to value i in look up table
       counter1++;             //increment counter
->>>>>>> 92ea32ca334c84079cc80c9b7cc2c559dd963b55
     }
     else if ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){ //else if Force value is less than 0, and counter is less than length-1, skip it until we hit a positive Force value
         while ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){ //skipping part
