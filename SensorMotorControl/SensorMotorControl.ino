@@ -302,6 +302,7 @@ void loop() {
   
   //sending newton values into ADC and then send to motor control
 <<<<<<< HEAD
+<<<<<<< HEAD
   if (((millis() - savedTime2) >= 3000) && (lengthForceArray>0)){
     if ((counter1<lengthForceArray) && (idealForceADC[counter1]> 0)){
       idealForce = idealForceADC[counter1];
@@ -311,10 +312,15 @@ void loop() {
       idealForce = idealForceADC[counter1];     //set ideal force to value i in look up table
       counter1++;             //increment counter
 =======
+=======
+>>>>>>> parent of 92ea32c (Commenting and formatting)
   if (((millis() - savedTime2) >= 5000) && (lengthForceArray>0)){
     if ((counter1<lengthForceArray) && (idealForceADC[counter1]> 0)){
       idealForce = idealForceADC[counter1];
       counter1++;
+<<<<<<< HEAD
+>>>>>>> parent of 92ea32c (Commenting and formatting)
+=======
 >>>>>>> parent of 92ea32c (Commenting and formatting)
     }
     else if ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){
