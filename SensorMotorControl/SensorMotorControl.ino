@@ -202,152 +202,194 @@ void setup() {
 
 void loop() {
 
-  
-    //if past range input != new range input --------------------------------------------------
+    //Serial.println(range_int);
     if(range_int != prev_range){
-    
-    if (range_int==1){ //look up tables depending on what was the input
+      //declaring
+
+    if (range_int==1){
+      
       double idealForceArray[] = {1, 0, 0, 0, 0, 0, 0, 0, 0};
+      
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
-      shuffleArray(idealForceArray, lengthForceArray); //randomizes the array.
+      shuffleArray(idealForceArray, lengthForceArray);
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
-        idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438; //quadratic line of best fit to change Force into ADC Value based on previous testing !! can always be changed.
+        idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
-    else if (range_int==2){ //look up tables depending on what was the input
+    else if (range_int==2){
       double idealForceArray[] = {1, 1.5, 2, 0, 0, 0, 0, 0, 0};
+      
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
-    else if (range_int==3){ //look up tables depending on what was the input
+    else if (range_int==3){
       double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 0, 0, 0, 0};
+      
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
-    else if (range_int==4){ //look up tables depending on what was the input
+    else if (range_int==4){
       double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 3.5, 4, 0, 0};
+      
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
-    else if (range_int==5){ //look up tables depending on what was the input
+    else if (range_int==5){
       double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5};
+      
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
+      // for (int i =0; i<lengthForceArray; i++){
+      //   Serial.print(idealForceArray[i]);
+      //   Serial.print(" ");
+      // }
       Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
+        // Serial.print(idealForceADC[i]);
+        // Serial.print(" ");
       }
     }
     else{
       Serial.print("Error");
     }
-    
-    prev_range = range_int; //past input = new input
+
+    prev_range = range_int;
     Serial.println(" ");
-    
-    savedTime2 = millis(); //saves time
+
+    savedTime2 = millis();
     counter1 = 0;
-    }//----------------------------------------------------------------------
+
+    }
   
   
   //sending newton values into ADC and then send to motor control
-  if (((millis() - savedTime2) >= 5000) && (lengthForceArray>0)){ //every 5 seconds, and if a range has been chosen, do this:
-    if ((counter1<lengthForceArray) && (idealForceADC[counter1]> 0)){ //if counter is less than total length of the look up table, and if the Force value is greater than 0, do this:
-      idealForce = idealForceADC[counter1];     //set ideal force to value i in look up table
-      counter1++;             //increment counter
+  if (((millis() - savedTime2) >= 5000) && (lengthForceArray>0)){
+    if ((counter1<lengthForceArray) && (idealForceADC[counter1]> 0)){
+      idealForce = idealForceADC[counter1];
+      counter1++;
     }
-    else if ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){ //else if Force value is less than 0, and counter is less than length-1, skip it until we hit a positive Force value
-        while ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){ //skipping part
+    else if ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){
+        while ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){
           counter1++;
         }
-        idealForce = idealForceADC[counter1]; //prints first non zero value
-        if (counter1<lengthForceArray-1){//increment counter right after
+        idealForce = idealForceADC[counter1];
+        if (counter1<lengthForceArray-1){
           counter1++;
         }
+        
+      
     }
     else {
-      idealForce = 0; //else Set force to 0, usually after the sequence is finished.
+      idealForce = 0;
     }
 
-      savedTime2 = millis(); //save new time
+      savedTime2 = millis();
   }
 
-  //motor control always on right now, need to seperate sensor reading and motor control
+  
   motorControl(idealForce);
 
-  //UI STUFF ----------------------------------------
-  char command;
-  // reading buttons
-  backcurr = digitalRead(backbut); // keep in code
-  downcurr = digitalRead(downbut);
-  entercurr = digitalRead(enterbut);
-  upcurr = digitalRead(upbut);
-  //Serial.print(backcurr);
-  if(backlast == HIGH && backcurr == LOW)
-    command = 55;
-    // save the last state
-  backlast = backcurr;
 
-  if(downlast == HIGH && downcurr == LOW)
-    command = 50;
-    // save the last state
-  downlast = downcurr;   
 
-  if(enterlast == HIGH && entercurr == LOW)
-    command = 53;
-    // save the last state
-  //enterlast = entercurr;
+    char command;
+    // reading buttons
+    backcurr = digitalRead(backbut); // keep in code
+    downcurr = digitalRead(downbut);
+    entercurr = digitalRead(enterbut);
+    upcurr = digitalRead(upbut);
+    //Serial.print(backcurr);
+    if(backlast == HIGH && backcurr == LOW)
+     command = 55;
+      // save the last state
+    backlast = backcurr;
 
-  if(uplast == HIGH && upcurr == LOW)
-    command = 56;
-    // save the last state
-  uplast = upcurr; 
+    if(downlast == HIGH && downcurr == LOW)
+      command = 50;
+      // save the last state
+   downlast = downcurr;   
 
-  switch (command) {
-      case UP:
-          menu.up();
-          menu.right();
-          break;
-      case DOWN:
-          menu.down();
-          menu.left();
-          break;
-      case LEFT:
-          menu.left();
-          break;
-      case RIGHT:
-          menu.right();
-          break;
-      case ENTER:  // Press enter to go to edit mode : for ItemInput
-          menu.enter();
-    
-          break;
-      case BACK:
-          menu.back();
-          break;
-      case CLEAR:
-          menu.clear();
-          break;
-      case BACKSPACE:  // Remove one character from tail
-          menu.backspace();
-          break;
-      default:
-          break;
-  }
-}//---------------------------------------------------------
+    if(enterlast == HIGH && entercurr == LOW)
+     command = 53;
+      // save the last state
+   //enterlast = entercurr;
+
+    if(uplast == HIGH && upcurr == LOW)
+     command = 56;
+      // save the last state
+   uplast = upcurr; 
+
+    switch (command) {
+        case UP:
+            menu.up();
+            menu.right();
+            break;
+        case DOWN:
+            menu.down();
+            menu.left();
+            break;
+        case LEFT:
+            menu.left();
+            break;
+        case RIGHT:
+            menu.right();
+            break;
+        case ENTER:  // Press enter to go to edit mode : for ItemInput
+            menu.enter();
+      
+            break;
+        case BACK:
+            menu.back();
+            break;
+        case CLEAR:
+            menu.clear();
+            break;
+        case BACKSPACE:  // Remove one character from tail
+            menu.backspace();
+            break;
+        default:
+            break;
+    }
+  
+
+}
 
 // CALLBACK FUNCTIONS
 void rangeCallback(uint16_t ran) {
