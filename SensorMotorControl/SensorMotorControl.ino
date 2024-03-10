@@ -195,6 +195,21 @@ void setup() {
   for (int i = 0; i < (sizeof(b)/sizeof(b[0])); i++) {
     b[i] = b[i]*0.0001;
   }
+
+  //Initialize SD card
+    if (!initializeSD()) {
+        Serial.println("SD Card initialization failed.");
+        return;
+      }
+// Open data file
+  if (!initializeDataFile()) {
+    Serial.println("Error opening data file.");
+    return;
+  }
+
+  // Write headers based on the current phase
+  writeHeaders();
+    
   
   //save start time
   savedTime1 = millis();
@@ -590,3 +605,75 @@ void shuffleArray(double arr[], int n) {
     arr[j] = temp;
   }
 }
+
+
+
+/****** DATA EXPORT STUFF ********/
+
+/* Definitions and Header Files */
+#include <SPI.h>
+#include <SdFat.h>
+
+/* Variables */
+SdFat sd;        //SD Card Variable
+File dataFile;   //Data File Variable
+
+/* Function Prototypes */
+bool initializeSD(); //initializes the SD card for communication. Returns true if initialization is sucessful, false otherwise
+bool initializeDataFile(); //opens a data file on the SD card for writing. It creates a new file named with the timestamp of the experiment start time. Returns true if the file iis sucessfully opened, false otherwise.
+void logDataToSD(); //logs sensors data to the SD card. 
+void checkEmergencyStopButton(); //checks if the emergency stop button is pressed. If pressed, it stops the experiment and logs a message indicating the experiment is over. 
+void writeHeaders(); //Check the current phase and write the corresponding headers
+
+
+/* initializeSD Function: initializes the SD card for communication. 
+Returns true if initialization is sucessful, false otherwise */
+bool initializeSD() {
+  return sd.begin(microSD, SPI_HALF_SPEED);
+}
+
+/* initializeDataFile Function: opens a data file on the SD card for writing. 
+It creates a new file named with the timestamp of the experiment start time. 
+Returns true if the file iis sucessfully opened, false otherwise. */
+bool initializeDataFile() {
+  char filename[15];
+  sprintf(filename, "%lu.csv", experimentStartTime);
+
+  dataFile = sd.open(filename, FILE_WRITE);
+  if (dataFile) {
+    dataFile.println("Time(ms), FSR Value");
+    dataFile.close();
+    Serial.println("Header written to file.");
+    return true;
+  }
+  return false;
+}
+
+/* writeHeaders Function: Check the current phase and write the corresponding headers */
+void writeHeaders() {
+    if (phase1_int == 1) { //Phase 1 Headers
+        dataFile.println("Duration (ms), Force Applied (N)");
+    } else if (phase2_int == 1) { //Phase 2 Headers
+        dataFile.println("Motor Applied Force (N), Patient Applied Force(N)");
+    } else if (phase3_int == 1) { //Phase 3 Headers
+        dataFile.println("Duration (ms), Force Applied by Slider");
+    }
+}
+
+/* logDataToSD Function: logs sensors data to the SD card. */
+void logDataToSD(double data1, double data2) {
+    dataFile.print(data1);
+    dataFile.print(",");
+    dataFile.print(data2);
+}
+
+
+/* checkEmergencyStopButton Function: checks if the emergency stop button is pressed. 
+If pressed, it stops the experiment and logs a message indicating the experiment is over. */
+void checkEmergencyStopButton() {
+  if (digitalRead(emergencyStop) == LOW) {
+    experimentRunning = false;
+    Serial.println("Emergency stop button activated. Experiment is over and Data has been successfully saved");
+  }
+}
+
