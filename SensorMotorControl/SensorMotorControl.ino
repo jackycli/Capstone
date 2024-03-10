@@ -174,6 +174,8 @@ unsigned long savedTime1 = 0; //Used for specific timing for sampling freq
 unsigned long savedTime2 = 0; //Used for timing to send idealForces
 int lengthForceArray = 0; //get the length of the array, a constant
 int idealForceArrayCounter = 0; //used to count what place in idealForceArray we are in
+int phase1_Delay = 3000; //small delay for when phase 1 is selected and the motor acting on that force
+
 
 int idealForceArray[9];
 int idealForceADC[9];
@@ -262,7 +264,7 @@ void loop() { //Loop Starts Here --------------------------------------------
   
   
 
-  if ((phase1_int ==1) && ((millis() - savedTime2) >= 3000) && (lengthForceArray>0)){ //gets ideal force on Phase 1, with 3 seconds delay, and range has been selected
+  if ((phase1_int ==1) && ((millis() - savedTime2) >= phase1_Delay) && (lengthForceArray>0)){ //gets ideal force on Phase 1, with a delay of phase1_Delay, and range has been selected
     if ((idealForceArrayCounter<lengthForceArray) && (idealForceADC[idealForceArrayCounter]> 0)){ //if counter is less than total length of the look up table, and if the Force value is greater than 0, do this:
       idealForce = idealForceADC[idealForceArrayCounter];     //set ideal force to value i in look up table
       idealForceArrayCounter++;             //increment counter
@@ -281,32 +283,10 @@ void loop() { //Loop Starts Here --------------------------------------------
     }
     phase1_int = 0;
   }
-  if ((millis() - savedTime2) >= (5000+duration_int*1000)){
+  if ((millis() - savedTime2) >= (phase1_Delay+duration_int*1000)){ //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
     idealForce = 0;
   }
 
-
-  // //sending newton values into ADC and then send to motor control
-  // if (((millis() - savedTime2) >= 5000) && (lengthForceArray>0)){ //every 5 seconds, and if a range has been chosen, do this:
-  //   if ((idealForceArrayCounter<lengthForceArray) && (idealForceADC[idealForceArrayCounter]> 0)){ //if counter is less than total length of the look up table, and if the Force value is greater than 0, do this:
-  //     idealForce = idealForceADC[idealForceArrayCounter];     //set ideal force to value i in look up table
-  //     idealForceArrayCounter++;             //increment counter
-  //   }
-  //   else if ((idealForceADC[idealForceArrayCounter] <= 0) && (idealForceArrayCounter<lengthForceArray-1)){ //else if Force value is less than 0, and counter is less than length-1, skip it until we hit a positive Force value
-  //       while ((idealForceADC[idealForceArrayCounter] <= 0) && (idealForceArrayCounter<lengthForceArray-1)){ //skipping part
-  //         idealForceArrayCounter++;
-  //       }
-  //       idealForce = idealForceADC[idealForceArrayCounter]; //prints first non zero value
-  //       if (idealForceArrayCounter<lengthForceArray-1){//increment counter right after
-  //         idealForceArrayCounter++;
-  //       }
-  //   }
-  //   else {
-  //     idealForce = 0; //else Set force to 0, usually after the sequence is finished.
-  //   }
-
-  //     savedTime2 = millis(); //save new time
-  // }
 
   //motor control always on right now, need to seperate sensor reading and motor control
   motorControl(idealForce);
