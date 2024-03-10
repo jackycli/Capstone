@@ -210,7 +210,6 @@ void loop() { //Loop Starts Here --------------------------------------------
       double idealForceArray[] = {1, 0, 0, 0, 0, 0, 0, 0, 0};
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray); //randomizes the array.
-      Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438; //quadratic line of best fit to change Force into ADC Value based on previous testing !! can always be changed.
       }
@@ -219,7 +218,6 @@ void loop() { //Loop Starts Here --------------------------------------------
       double idealForceArray[] = {1, 1.5, 2, 0, 0, 0, 0, 0, 0};
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
-      Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
       }
@@ -228,7 +226,6 @@ void loop() { //Loop Starts Here --------------------------------------------
       double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 0, 0, 0, 0};
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
-      Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
       }
@@ -237,7 +234,6 @@ void loop() { //Loop Starts Here --------------------------------------------
       double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 3.5, 4, 0, 0};
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
-      Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
       }
@@ -246,7 +242,6 @@ void loop() { //Loop Starts Here --------------------------------------------
       double idealForceArray[] = {1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5};
       lengthForceArray= sizeof(idealForceArray)/sizeof(idealForceArray[0]);
       shuffleArray(idealForceArray, lengthForceArray);
-      Serial.println(" ");
       for (int i =0; i<lengthForceArray; i++){
         idealForceADC[i] = 29.9836*pow(idealForceArray[i],2)+595.772*idealForceArray[i]-14.7438;
       }
@@ -254,12 +249,8 @@ void loop() { //Loop Starts Here --------------------------------------------
     else{
       Serial.print("Error");
     }
-    
     prev_range = range_int; //past input = new input
-    Serial.println(" ");
-    
-    
-    idealForceArrayCounter = 0;
+    idealForceArrayCounter = 0; //counter to track what position we are in
     }
   
   
