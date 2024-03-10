@@ -206,11 +206,7 @@ void setup() {
     Serial.println("Error opening data file.");
     return;
   }
-
-  // Write headers based on the current phase
-  writeHeaders();
     
-  
   //save start time
   savedTime1 = millis();
 }
@@ -296,14 +292,22 @@ void loop() { //Loop Starts Here --------------------------------------------
 
   //motor control always on right now, need to seperate sensor reading and motor control
   motorControl(idealForce);
+    
+// Write headers when the phase changes
+if (phase1_int == 1 && phase1_int != prev_phase1) {
+    writeHeaders();
+} else if (phase2_int == 1 && phase2_int != prev_phase2) {
+    writeHeaders();
+} else if (phase3_int == 1 && phase3_int != prev_phase3) {
+    writeHeaders();
+}
 
-
-
-
-
-
-
-
+// Update previous phase states for comparison in the next loop iteration
+prev_phase1 = phase1_int;
+prev_phase2 = phase2_int;
+prev_phase3 = phase3_int;
+    
+logDataToDS(sensorOutput, idealForce);
 
 
   //UI STUFF ----------------------------------------
