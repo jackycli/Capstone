@@ -161,7 +161,7 @@ double cumulativeError = 0; //for I term
 double previousError = 0; //for D term
 double derivativeError = 0; //for D term
 
-//motorControl error constants
+//motorControl error constants CHANGE THEM HERE; OR CHANGE THE ACTUAL LOGIC DOWN IN MOTOR CONTROLLER ERROR TERMS (Section: get Error)
 double Kp = 0.008; 
 double Ki = 0.000001;  
 double Kd = 0.0000001;
@@ -169,13 +169,11 @@ double Kd = 0.0000001;
 double motorCurrent = 0; //DAC value 
 int safety = 1; //safety latch for when RPM or current (special case, see motorcontrol section) goes over limit. Need to reset esp32 to reset
 
-//double idealForceArray[9];
-
 double idealForce = 0; //set force value
-unsigned long savedTime1 = 0; //Used for specific timeing for sampling freq
-unsigned long savedTime2 = 0;
-int lengthForceArray = 0;
-int counter1 = 0;
+unsigned long savedTime1 = 0; //Used for specific timing for sampling freq
+unsigned long savedTime2 = 0; //Used for timing to send idealForces
+int lengthForceArray = 0; //get the length of the array, a constant
+int idealForceArrayCounter = 0; //used to count what place in idealForceArray we are in
 
 int idealForceArray[9];
 int idealForceADC[9];
@@ -259,23 +257,23 @@ void loop() {
     Serial.println(" ");
     
     savedTime2 = millis(); //saves time
-    counter1 = 0;
+    idealForceArrayCounter = 0;
     }//----------------------------------------------------------------------
   
   
   //sending newton values into ADC and then send to motor control
   if (((millis() - savedTime2) >= 5000) && (lengthForceArray>0)){ //every 5 seconds, and if a range has been chosen, do this:
-    if ((counter1<lengthForceArray) && (idealForceADC[counter1]> 0)){ //if counter is less than total length of the look up table, and if the Force value is greater than 0, do this:
-      idealForce = idealForceADC[counter1];     //set ideal force to value i in look up table
-      counter1++;             //increment counter
+    if ((idealForceArrayCounter<lengthForceArray) && (idealForceADC[idealForceArrayCounter]> 0)){ //if counter is less than total length of the look up table, and if the Force value is greater than 0, do this:
+      idealForce = idealForceADC[idealForceArrayCounter];     //set ideal force to value i in look up table
+      idealForceArrayCounter++;             //increment counter
     }
-    else if ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){ //else if Force value is less than 0, and counter is less than length-1, skip it until we hit a positive Force value
-        while ((idealForceADC[counter1] <= 0) && (counter1<lengthForceArray-1)){ //skipping part
-          counter1++;
+    else if ((idealForceADC[idealForceArrayCounter] <= 0) && (idealForceArrayCounter<lengthForceArray-1)){ //else if Force value is less than 0, and counter is less than length-1, skip it until we hit a positive Force value
+        while ((idealForceADC[idealForceArrayCounter] <= 0) && (idealForceArrayCounter<lengthForceArray-1)){ //skipping part
+          idealForceArrayCounter++;
         }
-        idealForce = idealForceADC[counter1]; //prints first non zero value
-        if (counter1<lengthForceArray-1){//increment counter right after
-          counter1++;
+        idealForce = idealForceADC[idealForceArrayCounter]; //prints first non zero value
+        if (idealForceArrayCounter<lengthForceArray-1){//increment counter right after
+          idealForceArrayCounter++;
         }
     }
     else {
@@ -287,6 +285,15 @@ void loop() {
 
   //motor control always on right now, need to seperate sensor reading and motor control
   motorControl(idealForce);
+
+
+
+
+
+
+
+
+
 
   //UI STUFF ----------------------------------------
   char command;
