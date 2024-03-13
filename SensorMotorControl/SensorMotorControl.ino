@@ -83,10 +83,12 @@ int duration_int = 0;
 int prev_range = 0;
 
 
-int phase1_start = 0;
-bool phase1_inprogress = 0;
-int phase2_int = 0;
-int phase3_int = 0;
+int phase1_Start = 0;                 //latch to start phase 1 ONCE
+int phase1_InProgress = 0;            //show that phase 1 is currently running
+unsigned long phase1_ShowTime = 0;    //Used for phase 1 diplay
+unsigned long phase1_RunningTime = 0;    //Used for timing to send idealForces
+int phase2_Start = 0;
+int phase3_Start = 0;
 
 extern MenuItem* rangeMenu[];
 extern MenuItem* repetitionsMenu[];
@@ -165,8 +167,8 @@ int safety = 1;           //safety latch for when RPM or current (special case, 
 
 double idealForce = 0;           //set force value
 unsigned long savedTime1 = 0;    //Used for specific timing for sampling freq
-unsigned long savedTime2 = 0;    //Used for timing to send idealForces
-unsigned long savedTime3 = 0;    //Used for phase 1 diplay
+
+
 int lengthForceArray = 0;        //get the length of the array, a constant
 int idealForceArrayCounter = 0;  //used to count what place in idealForceArray we are in
 int phase1_Delay = 2000;         //small delay for when phase 1 is selected and the motor acting on that force
@@ -245,7 +247,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
 
 
 
-  if ((phase1_start == 1) && ((millis() - savedTime2) >= phase1_Delay) && (lengthForceArray > 0)) {                //gets ideal force on Phase 1, with a delay of phase1_Delay, and range has been selected
+  if ((phase1_Start == 1) && ((millis() - phase1_RunningTime) >= phase1_Delay) && (lengthForceArray > 0)) {                //gets ideal force on Phase 1, with a delay of phase1_Delay, and range has been selected
     if ((idealForceArrayCounter < lengthForceArray) && (idealForceADC[idealForceArrayCounter] > 0)) {              //if counter is less than total length of the look up table, and if the Force value is greater than 0, do this:
       idealForce = idealForceADC[idealForceArrayCounter];                                                          //set ideal force to value i in look up table
       idealForceArrayCounter++;                                                                                    //increment counter
@@ -260,16 +262,25 @@ void loop() {  //Loop Starts Here --------------------------------------------
     } else {
       idealForce = 0;  //else Set force to 0, usually after the sequence is finished.
     }
-    phase1_start = 0;
+    phase1_Start = 0;
   }
-  if (((millis() - savedTime2) >= (phase1_Delay + duration_int * 1000)) && (phase1_inprogress==1)) {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
+  if ( ((millis() - phase1_RunningTime) >= (phase1_Delay + duration_int * 1000)) && (phase1_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
     idealForce = 0;
-    phase1_inprogress = 0;
+    phase1_InProgress = 0;
+    if (phase1_InProgress == 0){
+      menu.lcd->setCursor(0, 1);
+      menu.lcd->print("Complete!     ");
+      phase1_ShowTime = millis();
+    }
   }
 
-  
+if ((millis() - phase1_ShowTime) >= (2000) && (phase1_ShowTime!=0)){
+  menu.show();
+  phase1_ShowTime =0;
+}
+ 
     //motor control always on right now, need to seperate sensor reading and motor control
-    motorControl (idealForce);
+  motorControl (idealForce);
 
   //UI STUFF ----------------------------------------
   char command;
@@ -372,54 +383,39 @@ void phase1Callback(uint16_t phas1) {
 
   if (phas1 == 1) {   // if 2nd index string is selected (Yes)
     phase1Display();  // hide menu and display new message of current active test phase
-    savedTime2 = millis();  //saves time
-    phase1_start = 1;
-    phase1_inprogress=1;
-
+    phase1_RunningTime = millis();  //saves time
+    phase1_Start = 1;
+    phase1_InProgress=1;
+    menu.hide();
+    menu.lcd->setCursor(0, 0);
+    menu.lcd->print("Phase 1:");
+    menu.lcd->setCursor(0, 1);
+    menu.lcd->print("In Progress...");
   } else if (phas1 == 0) {  // if 1rst index string is selected (No)
     //menu.show // Keep Menu active: don't start phase test
-    phase1_start = 0;
+    phase1_Start = 0;
   }
-  Serial.println(phase1_start);
+  // Serial.println(phase1_Start);
   //phas1 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 1 SUBMENU
 }
 
 void phase1Display() {
-  menu.hide();
-  menu.lcd->setCursor(0, 0);
-  menu.lcd->print("Phase 1:");
 
-
-  if (phase1_inprogress == 1) {
-    menu.lcd->setCursor(0, 1);
-    menu.lcd->print("In Progress...");
-    savedTime3 = millis();
-  }
-  
-  // simulate phase 1 ending
-  else if (phase1_inprogress==0) {
-    menu.lcd->setCursor(0, 1);
-    menu.lcd->print("Complete!     ");
-    if (millis() - savedTime3 >= (duration_int*1000+1000)){
-      menu.show();
-    }
-  }
 }
-
 void phase2Callback(uint16_t phas2) {
   // do something with the index
   // if selected "yes" do smth
 
   if (phas2 == 1) {   // if 2nd index string is selected (Yes)
     phase2Display();  // hide menu and display new message of current active test phase
-    phase2_int = 1;
+    phase2_Start = 1;
     
 
   } else if (phas2 == 0) {  // if 1rst index string is selected (No)
     //menu.show(); // Keep Menu active: don't start phase test
-    phase2_int = 0;
+    phase2_Start = 0;
   }
-  Serial.println(phase2_int);
+  Serial.println(phase2_Start);
   //phas2 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 2 SUBMENU
 }
 
@@ -444,13 +440,13 @@ void phase3Callback(uint16_t phas3) {
 
   if (phas3 == 1) {   // if 2nd index string is selected (Yes)
     phase3Display();  // hide menu and display new message of current active test phase
-    phase3_int = 1;
+    phase3_Start = 1;
 
   } else if (phas3 == 0) {  // if 1rst index string is selected (No)
     //menu.show(); // Keep Menu active: don't start phase test
-    phase3_int = 0;
+    phase3_Start = 0;
   }
-  Serial.println(phase3_int);
+  Serial.println(phase3_Start);
   //phas3 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 3 SUBMENU
 }
 
