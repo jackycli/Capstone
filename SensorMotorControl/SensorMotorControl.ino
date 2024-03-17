@@ -296,10 +296,13 @@ void loop() { //Loop Starts Here --------------------------------------------
 // Write headers when the phase changes
 if (phase1_int == 1 && phase1_int != prev_phase1) {
     writeHeaders();
+    logDataToDS(millis(), idealForce);
 } else if (phase2_int == 1 && phase2_int != prev_phase2) {
     writeHeaders();
+    logDataToDS(millis(),sensorOutput);
 } else if (phase3_int == 1 && phase3_int != prev_phase3) {
     writeHeaders();
+    logDataToDS(millis(),sensorOutput);
 }
 
 // Update previous phase states for comparison in the next loop iteration
@@ -307,8 +310,6 @@ prev_phase1 = phase1_int;
 prev_phase2 = phase2_int;
 prev_phase3 = phase3_int;
     
-logDataToDS(sensorOutput, idealForce);
-
 
   //UI STUFF ----------------------------------------
   char command;
@@ -618,9 +619,14 @@ void shuffleArray(double arr[], int n) {
 #include <SPI.h>
 #include <SdFat.h>
 
+/* Pins */
+const int microSD = 5;
+const int emergencyStop = 25; // Pin for emergency stop button
+
 /* Variables */
 SdFat sd;        //SD Card Variable
 File dataFile;   //Data File Variable
+bool experimentRunning = true; //controls the overall state of the experiment
 
 /* Function Prototypes */
 bool initializeSD(); //initializes the SD card for communication. Returns true if initialization is sucessful, false otherwise
@@ -645,10 +651,7 @@ bool initializeDataFile() {
 
   dataFile = sd.open(filename, FILE_WRITE);
   if (dataFile) {
-    dataFile.println("Time(ms), FSR Value");
-    dataFile.close();
-    Serial.println("Header written to file.");
-    return true;
+    writeHeaders();
   }
   return false;
 }
@@ -658,17 +661,19 @@ void writeHeaders() {
     if (phase1_int == 1) { //Phase 1 Headers
         dataFile.println("Duration (ms), Force Applied (N)");
     } else if (phase2_int == 1) { //Phase 2 Headers
-        dataFile.println("Motor Applied Force (N), Patient Applied Force(N)");
+        dataFile.println("Duration (ms), Patient Applied Force (N)");
     } else if (phase3_int == 1) { //Phase 3 Headers
-        dataFile.println("Duration (ms), Force Applied by Slider");
+        dataFile.println("Duration (ms), Force Applied by Slider (N)");
     }
 }
 
 /* logDataToSD Function: logs sensors data to the SD card. */
 void logDataToSD(double data1, double data2) {
-    dataFile.print(data1);
-    dataFile.print(",");
-    dataFile.print(data2);
+    if (experimentRunning) {
+        dataFile.print(data1);
+        dataFile.print(",");
+        dataFile.print(data2);
+    }
 }
 
 
