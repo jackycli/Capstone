@@ -159,7 +159,7 @@ double derivativeError = 0;  //for D term
 
 //motorControl error constants CHANGE THEM HERE; OR CHANGE THE ACTUAL LOGIC DOWN IN MOTOR CONTROLLER ERROR TERMS (Section: get Error)
 double Kp = 0.008;
-double Ki = 0.000001;
+double Ki = 0.0000001;
 double Kd = 0.0000001;
 //motorControl items
 double motorCurrent = 0;  //DAC value
