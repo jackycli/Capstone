@@ -159,7 +159,7 @@ double derivativeError = 0;  //for D term
 
 //motorControl error constants CHANGE THEM HERE; OR CHANGE THE ACTUAL LOGIC DOWN IN MOTOR CONTROLLER ERROR TERMS (Section: get Error)
 double Kp = 0.008;
-double Ki = 0.0000001;
+double Ki = 0.000001;
 double Kd = 0.0000001;
 //motorControl items
 double motorCurrent = 0;  //DAC value
@@ -541,7 +541,7 @@ void motorControl(int idealForce) {
     currentError = (idealForce - sensorOutput) / 4095 * 255;
 
     if (idealForce == 0) {  //if statement used to prevent inconsistent controls if idealForce set to 0 for sometime due to the integral controller adding up wrong error. Force sensor does not stay at 0 when Idealforce =0.
-      cumulativeError = cumulativeError + 0;
+      cumulativeError = -1;
     } else {
       cumulativeError = cumulativeError + currentError;  //get total error
     }
