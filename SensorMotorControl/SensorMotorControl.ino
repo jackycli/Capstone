@@ -75,20 +75,28 @@ void phase1Callback(uint16_t phas1);
 void phase2Callback(uint16_t phas2);
 void phase3Callback(uint16_t phas3);
 
+//Values received from UI
 int range_int = 0;
 int repetitions_int = 0;
 int duration_int = 0;
 
-// prev current counters
+// prev current counters, used to show that a range was selected. However, the researcher cannot reselect the same range.
 int prev_range = 0;
-
 
 int phase1_Start = 0;                 //latch to start phase 1 ONCE
 int phase1_InProgress = 0;            //show that phase 1 is currently running
 unsigned long phase1_ShowTime = 0;    //Used for phase 1 diplay
 unsigned long phase1_RunningTime = 0;    //Used for timing to send idealForces
-int phase2_Start = 0;
-int phase3_Start = 0;
+
+int phase2_Start = 0;                 //latch to start phase 2 ONCE
+int phase2_InProgress = 0;    
+unsigned long phase2_ShowTime = 0;    //Used for phase 2 diplay
+unsigned long phase2_RunningTime = 0;    //Used for timing to record forces
+
+int phase3_Start = 0;                 //latch to start phase 3 ONCE
+int phase3_InProgress = 0;    
+unsigned long phase3_ShowTime = 0;    //Used for phase 3 diplay
+unsigned long phase3_RunningTime = 0;    //Used for timing to record forces
 
 extern MenuItem* rangeMenu[];
 extern MenuItem* repetitionsMenu[];
@@ -172,6 +180,7 @@ unsigned long savedTime1 = 0;    //Used for specific timing for sampling freq
 int lengthForceArray = 0;        //get the length of the array, a constant
 int idealForceArrayCounter = 0;  //used to count what place in idealForceArray we are in
 int phase1_Delay = 2000;         //small delay for when phase 1 is selected and the motor acting on that force
+int phase2_Delay = 2000;         //small delay for when phase 2 is selected and the sensor is recording the force
 
 
 int idealForceArray[9];
@@ -246,7 +255,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
   }
 
 
-
+  //=phase 1=
   if ((phase1_Start == 1) && ((millis() - phase1_RunningTime) >= phase1_Delay) && (lengthForceArray > 0)) {                //gets ideal force on Phase 1, with a delay of phase1_Delay, and range has been selected
     if ((idealForceArrayCounter < lengthForceArray) && (idealForceADC[idealForceArrayCounter] > 0)) {              //if counter is less than total length of the look up table, and if the Force value is greater than 0, do this:
       idealForce = idealForceADC[idealForceArrayCounter];                                                          //set ideal force to value i in look up table
@@ -264,6 +273,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
     }
     phase1_Start = 0;
   }
+  //=phase 1 stop and complete screen=
   if ( ((millis() - phase1_RunningTime) >= (phase1_Delay + duration_int * 1000)) && (phase1_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
     idealForce = 0;
     phase1_InProgress = 0;
@@ -273,13 +283,40 @@ void loop() {  //Loop Starts Here --------------------------------------------
       phase1_ShowTime = millis();
     }
   }
+  //=phase 1 complete stop and go back to menu=
+  if ((millis() - phase1_ShowTime) >= (2000) && (phase1_ShowTime!=0)){ 
+    menu.show();
+    phase1_ShowTime =0;
+  }
 
-if ((millis() - phase1_ShowTime) >= (2000) && (phase1_ShowTime!=0)){
-  menu.show();
-  phase1_ShowTime =0;
-}
+
+
+
+  //=phase 2=
+  if ((phase2_Start == 1) && ((millis() - phase2_RunningTime) >= phase2_Delay)) {                //gets ideal force on Phase 1, with a delay of phase1_Delay, and range has been selected
+    //-> RECORD DATA HERE
+    phase1_Start = 0;
+  }
+  //=phase 2 stop and complete screen =
+  if ( ((millis() - phase2_RunningTime) >= (phase2_Delay + duration_int * 1000)) && (phase2_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
+    phase2_InProgress = 0;
+    if (phase2_InProgress == 0){
+      menu.lcd->setCursor(0, 1);
+      menu.lcd->print("Complete!     ");
+      phase2_ShowTime = millis();
+      //->STOP DATA RECORD HERE
+    }
+  }
+  //=phase 1 complete stop and go back to menu=
+  if ((millis() - phase2_ShowTime) >= (2000) && (phase2_ShowTime!=0)){ 
+    menu.show();
+    phase2_ShowTime =0;
+  }
+
+
+
  
-    //motor control always on right now, need to seperate sensor reading and motor control
+  //motor control always on right now, need to seperate sensor reading and motor control
   motorControl (idealForce);
 
   //UI STUFF ----------------------------------------
@@ -382,7 +419,7 @@ void phase1Callback(uint16_t phas1) {
   // if selected "yes" do smth
 
   if (phas1 == 1) {   // if 2nd index string is selected (Yes)
-    phase1Display();  // hide menu and display new message of current active test phase
+    
     phase1_RunningTime = millis();  //saves time
     phase1_Start = 1;
     phase1_InProgress=1;
@@ -399,70 +436,41 @@ void phase1Callback(uint16_t phas1) {
   //phas1 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 1 SUBMENU
 }
 
-void phase1Display() {
-
-}
 void phase2Callback(uint16_t phas2) {
-  // do something with the index
-  // if selected "yes" do smth
-
   if (phas2 == 1) {   // if 2nd index string is selected (Yes)
-    phase2Display();  // hide menu and display new message of current active test phase
+    phase2_RunningTime = millis();  //saves time
     phase2_Start = 1;
-    
-
+    phase2_InProgress=1;
+    menu.hide();
+    menu.lcd->setCursor(0, 0);
+    menu.lcd->print("Phase 2:");
+    menu.lcd->setCursor(0, 1);
+    menu.lcd->print("In Progress...");
   } else if (phas2 == 0) {  // if 1rst index string is selected (No)
-    //menu.show(); // Keep Menu active: don't start phase test
+    //menu.show // Keep Menu active: don't start phase test
     phase2_Start = 0;
   }
-  Serial.println(phase2_Start);
+  // Serial.println(phase2_Start);
   //phas2 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 2 SUBMENU
 }
 
-void phase2Display() {
-  menu.hide();
-  menu.lcd->setCursor(0, 0);
-  menu.lcd->print("Phase 2:");
-
-  menu.lcd->setCursor(0, 1);
-  menu.lcd->print("In Progress...");
-  // simulate phase 1 ending
-  delay(3000);
-  menu.lcd->setCursor(0, 1);
-  menu.lcd->print("Complete!     ");
-  delay(3000);
-  menu.show();
-}
 
 void phase3Callback(uint16_t phas3) {
-  // do something with the index
-  // if selected "yes" do smth
-
   if (phas3 == 1) {   // if 2nd index string is selected (Yes)
-    phase3Display();  // hide menu and display new message of current active test phase
+    phase3_RunningTime = millis();  //saves time
     phase3_Start = 1;
-
+    phase3_InProgress=1;
+    menu.hide();
+    menu.lcd->setCursor(0, 0);
+    menu.lcd->print("Phase 3:");
+    menu.lcd->setCursor(0, 1);
+    menu.lcd->print("In Progress...");
   } else if (phas3 == 0) {  // if 1rst index string is selected (No)
-    //menu.show(); // Keep Menu active: don't start phase test
+    //menu.show // Keep Menu active: don't start phase test
     phase3_Start = 0;
   }
-  Serial.println(phase3_Start);
-  //phas3 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 3 SUBMENU
-}
-
-void phase3Display() {
-  menu.hide();
-  menu.lcd->setCursor(0, 0);
-  menu.lcd->print("Phase 3:");
-
-  menu.lcd->setCursor(0, 1);
-  menu.lcd->print("In Progress...");
-  // simulate phase 1 ending
-  delay(3000);
-  menu.lcd->setCursor(0, 1);
-  menu.lcd->print("Complete!     ");
-  delay(3000);
-  menu.show();
+  // Serial.println(phase3_Start);
+  //phas2 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 2 SUBMENU
 }
 
 // MOTOR CONTROL
