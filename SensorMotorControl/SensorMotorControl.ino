@@ -1,5 +1,4 @@
 //LCD Menu definitions
-
 #include <ItemInput.h>
 #include <ItemList.h>
 #include <ItemSubMenu.h>
@@ -75,12 +74,12 @@ void phase1Callback(uint16_t phas1);
 void phase2Callback(uint16_t phas2);
 void phase3Callback(uint16_t phas3);
 
-//Values received from UI
+//Values received from UI, saved to use for the program
 int range_int = 0;
 int repetitions_int = 0;
 int duration_int = 0;
 
-// prev current counters, used to show that a range was selected. However, the researcher cannot reselect the same range.
+//Prev current counters, used to show that a range was selected. However, the researcher cannot reselect the same range.
 int prev_range = 0;
 
 int phase1_Start = 0;                 //latch to start phase 1 ONCE
@@ -98,6 +97,7 @@ int phase3_InProgress = 0;
 unsigned long phase3_ShowTime = 0;    //Used for phase 3 diplay
 unsigned long phase3_RunningTime = 0;    //Used for timing to record forces
 
+//Menu Items
 extern MenuItem* rangeMenu[];
 extern MenuItem* repetitionsMenu[];
 extern MenuItem* durationMenu[];
