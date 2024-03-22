@@ -142,6 +142,7 @@ LcdMenu menu(LCD_ROWS, LCD_COLS);
 #define CURRENTREADPIN 34
 #define SENSORREADPIN 35
 #define RPMREADPIN 32
+#define SLIDERPIN 36  //DOUBLE CHECK PIN FOR SLIDER!!!
 
 //motorControl past values for filtering
 double yn1 = 0;
@@ -151,6 +152,7 @@ double xn1 = 0;
 double xn2 = 0;
 double xn3 = 0;
 double sensorOutput = 0;  //force sensor reading
+double sliderOutput = 0; //slider reading
 
 //motorControl filter coefficients
 double b[5] = { 0.213398512073359, 0.640195536174559, 0.640195536307786, 0.213398512030061 };
@@ -181,6 +183,7 @@ int lengthForceArray = 0;        //get the length of the array, a constant
 int idealForceArrayCounter = 0;  //used to count what place in idealForceArray we are in
 int phase1_Delay = 2000;         //small delay for when phase 1 is selected and the motor acting on that force
 int phase2_Delay = 2000;         //small delay for when phase 2 is selected and the sensor is recording the force
+int phase3_Delay = 2000;         //small delay for when phase 2 is selected and the motor is recording the force
 
 
 int idealForceArray[9];
@@ -196,7 +199,6 @@ void setup() {
   pinMode(downbut, INPUT_PULLUP);
   pinMode(enterbut, INPUT_PULLUP);
   pinMode(upbut, INPUT_PULLUP);
-
   //motorControl filter coefficient: scaleing numerator (b) down by 1e-0x
   for (int i = 0; i < (sizeof(b) / sizeof(b[0])); i++) {
     b[i] = b[i] * 0.0001;
@@ -295,11 +297,12 @@ void loop() {  //Loop Starts Here --------------------------------------------
   //=phase 2=
   if ((phase2_Start == 1) && ((millis() - phase2_RunningTime) >= phase2_Delay)) {                //gets ideal force on Phase 1, with a delay of phase1_Delay, and range has been selected
     //-> RECORD DATA HERE
-    phase1_Start = 0;
+    idealForce = 0;
   }
   //=phase 2 stop and complete screen =
-  if ( ((millis() - phase2_RunningTime) >= (phase2_Delay + duration_int * 1000)) && (phase2_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
+  else if ( ((millis() - phase2_RunningTime) >= (phase2_Delay + duration_int * 1000)) && (phase2_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
     phase2_InProgress = 0;
+    phase1_Start = 0;
     if (phase2_InProgress == 0){
       menu.lcd->setCursor(0, 1);
       menu.lcd->print("Complete!     ");
@@ -307,13 +310,34 @@ void loop() {  //Loop Starts Here --------------------------------------------
       //->STOP DATA RECORD HERE
     }
   }
-  //=phase 1 complete stop and go back to menu=
+  //=phase 2 complete stop and go back to menu=
   if ((millis() - phase2_ShowTime) >= (2000) && (phase2_ShowTime!=0)){ 
     menu.show();
     phase2_ShowTime =0;
   }
 
 
+    //=phase 3=
+  if ((phase3_Start == 1) && ((millis() - phase3_RunningTime) >= phase3_Delay)) {                //gets ideal force on Phase 1, with a delay of phase1_Delay, and range has been selected
+    sliderOutput= analogRead(SLIDERPIN);
+    idealForce = sliderOutput/4096*255;
+  }
+  //=phase 3 stop and complete screen =
+  if ( ((millis() - phase3_RunningTime) >= (phase3_Delay + duration_int * 1000)) && (phase3_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
+    phase3_InProgress = 0;
+    phase1_Start = 0;
+    if (phase3_InProgress == 0){
+      menu.lcd->setCursor(0, 1);
+      menu.lcd->print("Complete!     ");
+      phase3_ShowTime = millis();
+      //->STOP DATA RECORD HERE
+    }
+  }
+  //=phase 3 complete stop and go back to menu=
+  if ((millis() - phase3_ShowTime) >= (2000) && (phase3_ShowTime!=0)){ 
+    menu.show();
+    phase3_ShowTime =0;
+  }
 
  
   //motor control always on right now, need to seperate sensor reading and motor control
