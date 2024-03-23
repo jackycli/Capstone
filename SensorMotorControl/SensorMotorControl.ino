@@ -295,12 +295,12 @@ void loop() {  //Loop Starts Here --------------------------------------------
 
 
   //=phase 2=
-  if ((phase2_Start == 1) && ((millis() - phase2_RunningTime) >= phase2_Delay)) {                //gets ideal force on Phase 1, with a delay of phase1_Delay, and range has been selected
+  if ((phase2_Start == 1) && ((millis() - phase2_RunningTime) >= phase2_Delay)) {                //copied paste from phase1, may not be efficient
     //-> RECORD DATA HERE
     idealForce = 0;
   }
   //=phase 2 stop and complete screen =
-  else if ( ((millis() - phase2_RunningTime) >= (phase2_Delay + duration_int * 1000)) && (phase2_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
+  else if ( ((millis() - phase2_RunningTime) >= (phase2_Delay + duration_int * 1000)) && (phase2_InProgress==1))  {  
     phase2_InProgress = 0;
     phase1_Start = 0;
     if (phase2_InProgress == 0){
@@ -318,15 +318,18 @@ void loop() {  //Loop Starts Here --------------------------------------------
 
 
     //=phase 3=
-  if ((phase3_Start == 1) && ((millis() - phase3_RunningTime) >= phase3_Delay)) {                //gets ideal force on Phase 1, with a delay of phase1_Delay, and range has been selected
+  if ((phase3_Start == 1) && ((millis() - phase3_RunningTime) >= phase3_Delay)) {                //when phase 3 selected, get idealForce from Slider
     sliderOutput= analogRead(SLIDERPIN);
-    idealForce = sliderOutput/4096*255;
+    idealForce = sliderOutput;
   }
   //=phase 3 stop and complete screen =
   if ( ((millis() - phase3_RunningTime) >= (phase3_Delay + duration_int * 1000)) && (phase3_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
+    idealForce = 0;
     phase3_InProgress = 0;
     phase1_Start = 0;
+    
     if (phase3_InProgress == 0){
+      
       menu.lcd->setCursor(0, 1);
       menu.lcd->print("Complete!     ");
       phase3_ShowTime = millis();
