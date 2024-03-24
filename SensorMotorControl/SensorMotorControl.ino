@@ -5,6 +5,12 @@
 #include <LcdMenu.h>  // Always comes after every item type import
 #include <SPI.h>
 #include <SdFat.h>
+#include <ESP32Time.h>
+
+
+/* Pins */
+const int microSD = 5;
+const int emergencyStop = 25; // Pin for emergency stop button
 
 ESP32Time rtc(3600);  // offset in seconds GMT+1
 #define FILE_BASE_NAME "Data"
@@ -38,6 +44,9 @@ int enterlast = HIGH;
 int entercurr;
 int uplast = HIGH;
 int upcurr;
+
+
+bool headerprinted = false;
 
 // RANGE SubMenu
 // Declare the array
@@ -204,6 +213,10 @@ bool experimentRunning = true; //controls the overall state of the experiment
 bool initializeSD(); //initializes the SD card for communication. Returns true if initialization is sucessful, false otherwise
 bool initializeDataFile(); //opens a data file on the SD card for writing. It creates a new file named with the timestamp of the experiment start time. Returns true if the file iis sucessfully opened, false otherwise.
 void checkEmergencyStopButton(); //checks if the emergency stop button is pressed. If pressed, it stops the experiment and logs a message indicating the experiment is over. 
+#define FILE_BASE_NAME "Data"
+#define error(msg) sd.errorHalt(F(msg))
+
+double sensorOutput_Newtons;
 
 void setup() {
   // Setup Serial Monitor
@@ -219,7 +232,17 @@ void setup() {
   for (int i = 0; i < (sizeof(b) / sizeof(b[0])); i++) {
     b[i] = b[i] * 0.0001;
   }
-
+    rtc.setTime(30, 1, 1, 24, 3, 2024);  // 17th Jan 2021 15:24:30
+  //Initialize SD card
+    if (!initializeSD()) {
+        Serial.println("SD Card initialization failed.");
+        return;
+      }
+// Open data file
+  if (!initializeDataFile()) {
+    Serial.println("Error opening data file.");
+    return;
+  }
   //save start time
   savedTime1 = millis();
 }
@@ -311,7 +334,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
       dataFile.print(rtc.getTime()); // Real-time timestamp
       dataFile.print(",");
       dataFile.println(sensorOutput_Newtons);
-      delay(1000);
+      //delay(1000);
   }
   //=phase 1 complete stop and go back to menu=
   if ((millis() - phase1_ShowTime) >= (2000) && (phase1_ShowTime!=0)){ 
@@ -333,7 +356,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
       dataFile.print(",");
       dataFile.println(sensorOutput_Newtons);
       delay(1000);
-  }
+  
     idealForce = 0;
   }
   //=phase 2 stop and complete screen =
@@ -369,7 +392,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
       dataFile.print(",");
       dataFile.println(sensorOutput_Newtons); //should this be idealForce?
       delay(1000);
-  }
+  
   }
   //=phase 3 stop and complete screen =
   if ( ((millis() - phase3_RunningTime) >= (phase3_Delay + duration_int * 1000)) && (phase3_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
@@ -591,7 +614,9 @@ void motorControl(int idealForce) {
       sensorOutput = 0;
     }
     Serial.print(sensorOutput);
+    sensorOutput_Newtons = sqrt((sensorOutput+2974.23062)/29.9836)-9.93496445;
     Serial.print(",");
+    Serial.print(sensorOutput_Newtons);
 
     //Motor control
 
@@ -654,5 +679,67 @@ void shuffleArray(double arr[], int n) {
     double temp = arr[i];
     arr[i] = arr[j];
     arr[j] = temp;
+  }
+}
+
+/* initializeSD Function: initializes the SD card for communication. 
+Returns true if initialization is sucessful, false otherwise */
+bool initializeSD() {
+  return sd.begin(microSD, SPI_HALF_SPEED);
+}
+
+/* initializeDataFile Function: opens a data file on the SD card for writing. 
+It creates a new file named with the timestamp of the experiment start time. 
+Returns true if the file iis sucessfully opened, false otherwise. */
+// bool initializeDataFile() {
+  
+
+//   dataFile = sd.open("test02.csv", FILE_WRITE);
+//   if (dataFile) {
+//     // //writeHeaders();
+//     dataFile.println("Time(ms), FSR Value");
+//     Serial.println("Header written to file.");
+//     //dataFile.close();
+//     return true;
+//   }
+//   return false;
+// }
+
+/* initializeDataFile Function: opens a data file on the SD card for writing.
+It creates a new file named with the timestamp of the experiment start time.
+Returns true if the file is successfully opened, false otherwise. */
+
+bool initializeDataFile() {
+  //String filename = "test04.csv"; // Default filename
+  
+  const uint8_t BASE_NAME_SIZE = sizeof(FILE_BASE_NAME) - 1;
+  char fileName[13] = FILE_BASE_NAME "00.csv";
+
+  // Find an unused file name.
+  if (BASE_NAME_SIZE > 6) {
+    error("FILE_BASE_NAME too long");
+  }
+  while (sd.exists(fileName)) {
+    if (fileName[BASE_NAME_SIZE + 1] != '9') {
+      fileName[BASE_NAME_SIZE + 1]++;
+    } else if (fileName[BASE_NAME_SIZE] != '9') {
+      fileName[BASE_NAME_SIZE + 1] = '0';
+      fileName[BASE_NAME_SIZE]++;
+    } else {
+      error("Can't create file name");
+    }
+  }
+  if (!dataFile.open(fileName, O_WRONLY | O_CREAT | O_EXCL)) {
+    error("file.open");
+  }
+  return false;
+}
+
+/* checkEmergencyStopButton Function: checks if the emergency stop button is pressed. 
+If pressed, it stops the experiment and logs a message indicating the experiment is over. */
+void checkEmergencyStopButton() {
+  if (digitalRead(emergencyStop) == LOW) {
+    experimentRunning = false;
+    Serial.println("Emergency stop button activated. Experiment is over and Data has been successfully saved");
   }
 }
