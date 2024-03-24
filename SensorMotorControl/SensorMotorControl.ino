@@ -1,8 +1,36 @@
 //LCD Menu definitions
+
 #include <ItemInput.h>
 #include <ItemList.h>
 #include <ItemSubMenu.h>
 #include <LcdMenu.h>  // Always comes after every item type import
+#include <ESP32Time.h>
+
+ESP32Time rtc(3600);  // offset in seconds GMT+1
+
+/* Definitions and Header Files */
+#include <SPI.h>
+#include <SdFat.h>
+
+/* Pins */
+const int microSD = 5;
+const int emergencyStop = 25; // Pin for emergency stop button
+
+/* Variables */
+SdFat sd;        //SD Card Variable
+File dataFile;   //Data File Variable
+bool experimentRunning = true; //controls the overall state of the experiment
+// int prev_phase1;
+// int prev_phase2;
+// int prev_phase3;
+#define FILE_BASE_NAME "Data"
+#define error(msg) sd.errorHalt(F(msg))
+
+double sensorOutput_Newtons;
+/* Function Prototypes */
+bool initializeSD(); //initializes the SD card for communication. Returns true if initialization is sucessful, false otherwise
+bool initializeDataFile(); //opens a data file on the SD card for writing. It creates a new file named with the timestamp of the experiment start time. Returns true if the file iis sucessfully opened, false otherwise.
+void checkEmergencyStopButton(); //checks if the emergency stop button is pressed. If pressed, it stops the experiment and logs a message indicating the experiment is over. 
 
 #define LCD_ROWS 4
 #define LCD_COLS 20
@@ -32,6 +60,7 @@ int enterlast = HIGH;
 int entercurr;
 int uplast = HIGH;
 int upcurr;
+bool headerprinted = false;
 
 // RANGE SubMenu
 // Declare the array
@@ -74,30 +103,21 @@ void phase1Callback(uint16_t phas1);
 void phase2Callback(uint16_t phas2);
 void phase3Callback(uint16_t phas3);
 
-//Values received from UI, saved to use for the program
 int range_int = 0;
 int repetitions_int = 0;
 int duration_int = 0;
 
-//Prev current counters, used to show that a range was selected. However, the researcher cannot reselect the same range.
+// prev current counters
 int prev_range = 0;
+
 
 int phase1_Start = 0;                 //latch to start phase 1 ONCE
 int phase1_InProgress = 0;            //show that phase 1 is currently running
 unsigned long phase1_ShowTime = 0;    //Used for phase 1 diplay
 unsigned long phase1_RunningTime = 0;    //Used for timing to send idealForces
+int phase2_Start = 0;
+int phase3_Start = 0;
 
-int phase2_Start = 0;                 //latch to start phase 2 ONCE
-int phase2_InProgress = 0;    
-unsigned long phase2_ShowTime = 0;    //Used for phase 2 diplay
-unsigned long phase2_RunningTime = 0;    //Used for timing to record forces
-
-int phase3_Start = 0;                 //latch to start phase 3 ONCE
-int phase3_InProgress = 0;    
-unsigned long phase3_ShowTime = 0;    //Used for phase 3 diplay
-unsigned long phase3_RunningTime = 0;    //Used for timing to record forces
-
-//Menu Items
 extern MenuItem* rangeMenu[];
 extern MenuItem* repetitionsMenu[];
 extern MenuItem* durationMenu[];
@@ -142,7 +162,6 @@ LcdMenu menu(LCD_ROWS, LCD_COLS);
 #define CURRENTREADPIN 34
 #define SENSORREADPIN 35
 #define RPMREADPIN 32
-#define SLIDERPIN 36  //DOUBLE CHECK PIN FOR SLIDER!!!
 
 //motorControl past values for filtering
 double yn1 = 0;
@@ -152,7 +171,6 @@ double xn1 = 0;
 double xn2 = 0;
 double xn3 = 0;
 double sensorOutput = 0;  //force sensor reading
-double sliderOutput = 0; //slider reading
 
 //motorControl filter coefficients
 double b[5] = { 0.213398512073359, 0.640195536174559, 0.640195536307786, 0.213398512030061 };
@@ -182,8 +200,6 @@ unsigned long savedTime1 = 0;    //Used for specific timing for sampling freq
 int lengthForceArray = 0;        //get the length of the array, a constant
 int idealForceArrayCounter = 0;  //used to count what place in idealForceArray we are in
 int phase1_Delay = 2000;         //small delay for when phase 1 is selected and the motor acting on that force
-int phase2_Delay = 2000;         //small delay for when phase 2 is selected and the sensor is recording the force
-int phase3_Delay = 2000;         //small delay for when phase 2 is selected and the motor is recording the force
 
 
 int idealForceArray[9];
@@ -199,9 +215,28 @@ void setup() {
   pinMode(downbut, INPUT_PULLUP);
   pinMode(enterbut, INPUT_PULLUP);
   pinMode(upbut, INPUT_PULLUP);
+
   //motorControl filter coefficient: scaleing numerator (b) down by 1e-0x
   for (int i = 0; i < (sizeof(b) / sizeof(b[0])); i++) {
     b[i] = b[i] * 0.0001;
+  }
+
+  rtc.setTime(30, 1, 1, 24, 3, 2024);  // 17th Jan 2021 15:24:30
+
+  //   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  // struct tm timeinfo;
+  // if (getLocalTime(&timeinfo)){
+  //   rtc.setTimeStruct(timeinfo); 
+  // }
+  //Initialize SD card
+    if (!initializeSD()) {
+        Serial.println("SD Card initialization failed.");
+        return;
+      }
+// Open data file
+  if (!initializeDataFile()) {
+    Serial.println("Error opening data file.");
+    return;
   }
 
   //save start time
@@ -209,8 +244,6 @@ void setup() {
 }
 
 void loop() {  //Loop Starts Here --------------------------------------------
-
-
   //if past range input != new range input
   if (range_int != prev_range) {
 
@@ -257,7 +290,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
   }
 
 
-  //=phase 1=
+
   if ((phase1_Start == 1) && ((millis() - phase1_RunningTime) >= phase1_Delay) && (lengthForceArray > 0)) {                //gets ideal force on Phase 1, with a delay of phase1_Delay, and range has been selected
     if ((idealForceArrayCounter < lengthForceArray) && (idealForceADC[idealForceArrayCounter] > 0)) {              //if counter is less than total length of the look up table, and if the Force value is greater than 0, do this:
       idealForce = idealForceADC[idealForceArrayCounter];                                                          //set ideal force to value i in look up table
@@ -275,7 +308,6 @@ void loop() {  //Loop Starts Here --------------------------------------------
     }
     phase1_Start = 0;
   }
-  //=phase 1 stop and complete screen=
   if ( ((millis() - phase1_RunningTime) >= (phase1_Delay + duration_int * 1000)) && (phase1_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
     idealForce = 0;
     phase1_InProgress = 0;
@@ -283,68 +315,44 @@ void loop() {  //Loop Starts Here --------------------------------------------
       menu.lcd->setCursor(0, 1);
       menu.lcd->print("Complete!     ");
       phase1_ShowTime = millis();
+      headerprinted = false;
+      dataFile.close();
     }
   }
-  //=phase 1 complete stop and go back to menu=
-  if ((millis() - phase1_ShowTime) >= (2000) && (phase1_ShowTime!=0)){ 
-    menu.show();
-    phase1_ShowTime =0;
-  }
-
-
-
-
-  //=phase 2=
-  if ((phase2_Start == 1) && ((millis() - phase2_RunningTime) >= phase2_Delay)) {                //copied paste from phase1, may not be efficient
-    //-> RECORD DATA HERE
-    idealForce = 0;
-  }
-  //=phase 2 stop and complete screen =
-  else if ( ((millis() - phase2_RunningTime) >= (phase2_Delay + duration_int * 1000)) && (phase2_InProgress==1))  {  
-    phase2_InProgress = 0;
-    phase1_Start = 0;
-    if (phase2_InProgress == 0){
-      menu.lcd->setCursor(0, 1);
-      menu.lcd->print("Complete!     ");
-      phase2_ShowTime = millis();
-      //->STOP DATA RECORD HERE
+  if (phase1_InProgress == 1) {
+    if (headerprinted == false) {
+      dataFile.println("Timestamp (ms), Patient Applied Force (N)");
+      headerprinted = true;
     }
+      dataFile.print(rtc.getTime()); // Real-time timestamp
+      dataFile.print(",");
+      dataFile.println(sensorOutput_Newtons);
+      delay(1000);
   }
-  //=phase 2 complete stop and go back to menu=
-  if ((millis() - phase2_ShowTime) >= (2000) && (phase2_ShowTime!=0)){ 
-    menu.show();
-    phase2_ShowTime =0;
-  }
-
-
-    //=phase 3=
-  if ((phase3_Start == 1) && ((millis() - phase3_RunningTime) >= phase3_Delay)) {                //when phase 3 selected, get idealForce from Slider
-    sliderOutput= analogRead(SLIDERPIN);
-    idealForce = sliderOutput;
-  }
-  //=phase 3 stop and complete screen =
-  if ( ((millis() - phase3_RunningTime) >= (phase3_Delay + duration_int * 1000)) && (phase3_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
-    idealForce = 0;
-    phase3_InProgress = 0;
-    phase1_Start = 0;
-    
-    if (phase3_InProgress == 0){
-      
-      menu.lcd->setCursor(0, 1);
-      menu.lcd->print("Complete!     ");
-      phase3_ShowTime = millis();
-      //->STOP DATA RECORD HERE
-    }
-  }
-  //=phase 3 complete stop and go back to menu=
-  if ((millis() - phase3_ShowTime) >= (2000) && (phase3_ShowTime!=0)){ 
-    menu.show();
-    phase3_ShowTime =0;
-  }
-
  
-  //motor control always on right now, need to seperate sensor reading and motor control
+
+if ((millis() - phase1_ShowTime) >= (2000) && (phase1_ShowTime!=0)){
+  menu.show();
+  phase1_ShowTime =0;
+}
+ 
+    //motor control always on right now, need to seperate sensor reading and motor control
   motorControl (idealForce);
+  //logDataToSD(savedTime1,sensorOutput_Newtons);
+  
+
+  // Write headers when the phase changes
+// if (phase1_InProgress == 1 && phase1_Start != prev_phase1) {
+//     writeHeaders();
+//     logDataToSD(millis(), idealForce);
+// } else if (phase2_Start == 1 && phase2_Start != prev_phase2) {
+//     writeHeaders();
+//     logDataToSD(millis(),sensorOutput_Newtons);
+// } else if (phase3_Start == 1 && phase3_Start != prev_phase3) {
+//     writeHeaders();
+//     logDataToSD(millis(),sensorOutput_Newtons);
+// }
+
 
   //UI STUFF ----------------------------------------
   char command;
@@ -446,7 +454,7 @@ void phase1Callback(uint16_t phas1) {
   // if selected "yes" do smth
 
   if (phas1 == 1) {   // if 2nd index string is selected (Yes)
-    
+    phase1Display();  // hide menu and display new message of current active test phase
     phase1_RunningTime = millis();  //saves time
     phase1_Start = 1;
     phase1_InProgress=1;
@@ -463,41 +471,70 @@ void phase1Callback(uint16_t phas1) {
   //phas1 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 1 SUBMENU
 }
 
+void phase1Display() {
+
+}
 void phase2Callback(uint16_t phas2) {
+  // do something with the index
+  // if selected "yes" do smth
+
   if (phas2 == 1) {   // if 2nd index string is selected (Yes)
-    phase2_RunningTime = millis();  //saves time
+    phase2Display();  // hide menu and display new message of current active test phase
     phase2_Start = 1;
-    phase2_InProgress=1;
-    menu.hide();
-    menu.lcd->setCursor(0, 0);
-    menu.lcd->print("Phase 2:");
-    menu.lcd->setCursor(0, 1);
-    menu.lcd->print("In Progress...");
+    
+
   } else if (phas2 == 0) {  // if 1rst index string is selected (No)
-    //menu.show // Keep Menu active: don't start phase test
+    //menu.show(); // Keep Menu active: don't start phase test
     phase2_Start = 0;
   }
-  // Serial.println(phase2_Start);
+  Serial.println(phase2_Start);
   //phas2 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 2 SUBMENU
 }
 
+void phase2Display() {
+  menu.hide();
+  menu.lcd->setCursor(0, 0);
+  menu.lcd->print("Phase 2:");
+
+  menu.lcd->setCursor(0, 1);
+  menu.lcd->print("In Progress...");
+  // simulate phase 1 ending
+  delay(3000);
+  menu.lcd->setCursor(0, 1);
+  menu.lcd->print("Complete!     ");
+  delay(3000);
+  menu.show();
+}
 
 void phase3Callback(uint16_t phas3) {
+  // do something with the index
+  // if selected "yes" do smth
+
   if (phas3 == 1) {   // if 2nd index string is selected (Yes)
-    phase3_RunningTime = millis();  //saves time
+    phase3Display();  // hide menu and display new message of current active test phase
     phase3_Start = 1;
-    phase3_InProgress=1;
-    menu.hide();
-    menu.lcd->setCursor(0, 0);
-    menu.lcd->print("Phase 3:");
-    menu.lcd->setCursor(0, 1);
-    menu.lcd->print("In Progress...");
+
   } else if (phas3 == 0) {  // if 1rst index string is selected (No)
-    //menu.show // Keep Menu active: don't start phase test
+    //menu.show(); // Keep Menu active: don't start phase test
     phase3_Start = 0;
   }
-  // Serial.println(phase3_Start);
-  //phas2 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 2 SUBMENU
+  Serial.println(phase3_Start);
+  //phas3 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 3 SUBMENU
+}
+
+void phase3Display() {
+  menu.hide();
+  menu.lcd->setCursor(0, 0);
+  menu.lcd->print("Phase 3:");
+
+  menu.lcd->setCursor(0, 1);
+  menu.lcd->print("In Progress...");
+  // simulate phase 1 ending
+  delay(3000);
+  menu.lcd->setCursor(0, 1);
+  menu.lcd->print("Complete!     ");
+  delay(3000);
+  menu.show();
 }
 
 // MOTOR CONTROL
@@ -540,6 +577,7 @@ void motorControl(int idealForce) {
       sensorOutput = 0;
     }
     Serial.print(sensorOutput);
+    sensorOutput_Newtons = sqrt((sensorOutput+2974.23062)/29.9836)-9.93496445;
     Serial.print(",");
 
     //Motor control
@@ -547,14 +585,14 @@ void motorControl(int idealForce) {
     //Read analog RPM values from Motor Controller
     //Serial.print("Digital RPM Value = ");
     int rpmRead = analogRead(RPMREADPIN);
-    // Serial.print("RPM Read Value: ");
-    // Serial.println(rpmRead);
+    Serial.print("RPM Read Value: ");
+    Serial.println(rpmRead);
 
     //Read analog current values from Motor Controller
     //Serial.print("Digital Current Value = ");
     int currentRead = analogRead(CURRENTREADPIN);
-    //Serial.print("Current Read Value: ");
-    //Serial.println(currentRead);
+    Serial.print("Current Read Value: ");
+    Serial.println(currentRead);
 
     //only run of RPM is within bounds
     if ((rpmRead <= rpmLimit) && (rpmRead >= -rpmLimit) && (safety == 1)) {
@@ -603,5 +641,71 @@ void shuffleArray(double arr[], int n) {
     double temp = arr[i];
     arr[i] = arr[j];
     arr[j] = temp;
+  }
+}
+
+/****** DATA EXPORT STUFF ********/
+
+
+
+/* initializeSD Function: initializes the SD card for communication. 
+Returns true if initialization is sucessful, false otherwise */
+bool initializeSD() {
+  return sd.begin(microSD, SPI_HALF_SPEED);
+}
+
+/* initializeDataFile Function: opens a data file on the SD card for writing. 
+It creates a new file named with the timestamp of the experiment start time. 
+Returns true if the file iis sucessfully opened, false otherwise. */
+// bool initializeDataFile() {
+  
+
+//   dataFile = sd.open("test02.csv", FILE_WRITE);
+//   if (dataFile) {
+//     // //writeHeaders();
+//     dataFile.println("Time(ms), FSR Value");
+//     Serial.println("Header written to file.");
+//     //dataFile.close();
+//     return true;
+//   }
+//   return false;
+// }
+
+/* initializeDataFile Function: opens a data file on the SD card for writing.
+It creates a new file named with the timestamp of the experiment start time.
+Returns true if the file is successfully opened, false otherwise. */
+
+bool initializeDataFile() {
+  //String filename = "test04.csv"; // Default filename
+  
+  const uint8_t BASE_NAME_SIZE = sizeof(FILE_BASE_NAME) - 1;
+  char fileName[13] = FILE_BASE_NAME "00.csv";
+
+  // Find an unused file name.
+  if (BASE_NAME_SIZE > 6) {
+    error("FILE_BASE_NAME too long");
+  }
+  while (sd.exists(fileName)) {
+    if (fileName[BASE_NAME_SIZE + 1] != '9') {
+      fileName[BASE_NAME_SIZE + 1]++;
+    } else if (fileName[BASE_NAME_SIZE] != '9') {
+      fileName[BASE_NAME_SIZE + 1] = '0';
+      fileName[BASE_NAME_SIZE]++;
+    } else {
+      error("Can't create file name");
+    }
+  }
+  if (!dataFile.open(fileName, O_WRONLY | O_CREAT | O_EXCL)) {
+    error("file.open");
+  }
+  return false;
+}
+
+/* checkEmergencyStopButton Function: checks if the emergency stop button is pressed. 
+If pressed, it stops the experiment and logs a message indicating the experiment is over. */
+void checkEmergencyStopButton() {
+  if (digitalRead(emergencyStop) == LOW) {
+    experimentRunning = false;
+    Serial.println("Emergency stop button activated. Experiment is over and Data has been successfully saved");
   }
 }
