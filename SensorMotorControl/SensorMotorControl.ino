@@ -3,6 +3,12 @@
 #include <ItemList.h>
 #include <ItemSubMenu.h>
 #include <LcdMenu.h>  // Always comes after every item type import
+#include <SPI.h>
+#include <SdFat.h>
+
+ESP32Time rtc(3600);  // offset in seconds GMT+1
+#define FILE_BASE_NAME "Data"
+#define error(msg) sd.errorHalt(F(msg))
 
 #define LCD_ROWS 4
 #define LCD_COLS 20
@@ -143,6 +149,8 @@ LcdMenu menu(LCD_ROWS, LCD_COLS);
 #define SENSORREADPIN 35
 #define RPMREADPIN 32
 #define SLIDERPIN 36  //DOUBLE CHECK PIN FOR SLIDER!!!
+#define MicroSD 5
+#define emergencyStop 25
 
 //motorControl past values for filtering
 double yn1 = 0;
@@ -188,6 +196,14 @@ int phase3_Delay = 2000;         //small delay for when phase 2 is selected and 
 
 int idealForceArray[9];
 int idealForceADC[9];
+
+//Data Export Variables
+SdFat sd;        //SD Card Variable
+File dataFile;   //Data File Variable
+bool experimentRunning = true; //controls the overall state of the experiment
+bool initializeSD(); //initializes the SD card for communication. Returns true if initialization is sucessful, false otherwise
+bool initializeDataFile(); //opens a data file on the SD card for writing. It creates a new file named with the timestamp of the experiment start time. Returns true if the file iis sucessfully opened, false otherwise.
+void checkEmergencyStopButton(); //checks if the emergency stop button is pressed. If pressed, it stops the experiment and logs a message indicating the experiment is over. 
 
 void setup() {
   // Setup Serial Monitor
@@ -283,7 +299,19 @@ void loop() {  //Loop Starts Here --------------------------------------------
       menu.lcd->setCursor(0, 1);
       menu.lcd->print("Complete!     ");
       phase1_ShowTime = millis();
+      headerprinted = false;
+      dataFile.close();
     }
+  }
+  if (phase1_InProgress == 1) {
+    if (headerprinted == false) {
+      dataFile.println("Timestamp (ms), Applied Force (N)");
+      headerprinted = true;
+    }
+      dataFile.print(rtc.getTime()); // Real-time timestamp
+      dataFile.print(",");
+      dataFile.println(sensorOutput_Newtons);
+      delay(1000);
   }
   //=phase 1 complete stop and go back to menu=
   if ((millis() - phase1_ShowTime) >= (2000) && (phase1_ShowTime!=0)){ 
@@ -297,6 +325,15 @@ void loop() {  //Loop Starts Here --------------------------------------------
   //=phase 2=
   if ((phase2_Start == 1) && ((millis() - phase2_RunningTime) >= phase2_Delay)) {                //copied paste from phase1, may not be efficient
     //-> RECORD DATA HERE
+    if (headerprinted == false) {
+      dataFile.println("Timestamp (ms), Patient Applied Force (N)");
+      headerprinted = true;
+    }
+      dataFile.print(rtc.getTime()); // Real-time timestamp
+      dataFile.print(",");
+      dataFile.println(sensorOutput_Newtons);
+      delay(1000);
+  }
     idealForce = 0;
   }
   //=phase 2 stop and complete screen =
@@ -308,12 +345,15 @@ void loop() {  //Loop Starts Here --------------------------------------------
       menu.lcd->print("Complete!     ");
       phase2_ShowTime = millis();
       //->STOP DATA RECORD HERE
+      headerprinted = false;
+      dataFile.close();
     }
   }
   //=phase 2 complete stop and go back to menu=
   if ((millis() - phase2_ShowTime) >= (2000) && (phase2_ShowTime!=0)){ 
     menu.show();
     phase2_ShowTime =0;
+    
   }
 
 
@@ -321,6 +361,15 @@ void loop() {  //Loop Starts Here --------------------------------------------
   if ((phase3_Start == 1) && ((millis() - phase3_RunningTime) >= phase3_Delay)) {                //when phase 3 selected, get idealForce from Slider
     sliderOutput= analogRead(SLIDERPIN);
     idealForce = sliderOutput;
+    if (headerprinted == false) {
+      dataFile.println("Timestamp (ms), Patient Applied Force (N)");
+      headerprinted = true;
+    }
+      dataFile.print(rtc.getTime()); // Real-time timestamp
+      dataFile.print(",");
+      dataFile.println(sensorOutput_Newtons); //should this be idealForce?
+      delay(1000);
+  }
   }
   //=phase 3 stop and complete screen =
   if ( ((millis() - phase3_RunningTime) >= (phase3_Delay + duration_int * 1000)) && (phase3_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
@@ -334,6 +383,8 @@ void loop() {  //Loop Starts Here --------------------------------------------
       menu.lcd->print("Complete!     ");
       phase3_ShowTime = millis();
       //->STOP DATA RECORD HERE
+      headerprinted = false;
+      dataFile.close();
     }
   }
   //=phase 3 complete stop and go back to menu=
