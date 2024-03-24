@@ -157,7 +157,7 @@ LcdMenu menu(LCD_ROWS, LCD_COLS);
 #define CURRENTREADPIN 34
 #define SENSORREADPIN 35
 #define RPMREADPIN 32
-#define SLIDERPIN 36  //DOUBLE CHECK PIN FOR SLIDER!!!
+#define SLIDERPIN 26  //DOUBLE CHECK PIN FOR SLIDER!!!
 #define MicroSD 5
 #define emergencyStop 25
 
@@ -194,6 +194,7 @@ int safety = 1;           //safety latch for when RPM or current (special case, 
 
 double idealForce = 0;           //set force value
 unsigned long savedTime1 = 0;    //Used for specific timing for sampling freq
+unsigned long savedTime2 = 0;   //used for data capturef
 
 
 int lengthForceArray = 0;        //get the length of the array, a constant
@@ -232,7 +233,7 @@ void setup() {
   for (int i = 0; i < (sizeof(b) / sizeof(b[0])); i++) {
     b[i] = b[i] * 0.0001;
   }
-    rtc.setTime(30, 1, 1, 24, 3, 2024);  // 17th Jan 2021 15:24:30
+    rtc.setTime(0, 0, 1, 24, 3, 2024, 0);  
   //Initialize SD card
     if (!initializeSD()) {
         Serial.println("SD Card initialization failed.");
@@ -313,6 +314,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
       idealForce = 0;  //else Set force to 0, usually after the sequence is finished.
     }
     phase1_Start = 0;
+    savedTime2 = millis();
   }
   //=phase 1 stop and complete screen=
   if ( ((millis() - phase1_RunningTime) >= (phase1_Delay + duration_int * 1000)) && (phase1_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
@@ -331,10 +333,13 @@ void loop() {  //Loop Starts Here --------------------------------------------
       dataFile.println("Timestamp (ms), Applied Force (N)");
       headerprinted = true;
     }
+    if ((millis() - savedTime2) >= 100) {
       dataFile.print(rtc.getTime()); // Real-time timestamp
       dataFile.print(",");
       dataFile.println(sensorOutput_Newtons);
       //delay(1000);
+      savedTime2 = millis();
+  }
   }
   //=phase 1 complete stop and go back to menu=
   if ((millis() - phase1_ShowTime) >= (2000) && (phase1_ShowTime!=0)){ 
@@ -352,17 +357,20 @@ void loop() {  //Loop Starts Here --------------------------------------------
       dataFile.println("Timestamp (ms), Patient Applied Force (N)");
       headerprinted = true;
     }
+    if ((millis() - savedTime2) >= 100) {
       dataFile.print(rtc.getTime()); // Real-time timestamp
       dataFile.print(",");
       dataFile.println(sensorOutput_Newtons);
-      delay(1000);
+      //delay(1000);
+      savedTime2 = millis();
+    }
   
     idealForce = 0;
   }
   //=phase 2 stop and complete screen =
-  else if ( ((millis() - phase2_RunningTime) >= (phase2_Delay + duration_int * 1000)) && (phase2_InProgress==1))  {  
+  if ( ((millis() - phase2_RunningTime) >= (phase2_Delay + duration_int * 1000)) && (phase2_InProgress==1))  {  
     phase2_InProgress = 0;
-    phase1_Start = 0;
+    phase2_Start = 0;
     if (phase2_InProgress == 0){
       menu.lcd->setCursor(0, 1);
       menu.lcd->print("Complete!     ");
@@ -388,17 +396,18 @@ void loop() {  //Loop Starts Here --------------------------------------------
       dataFile.println("Timestamp (ms), Patient Applied Force (N)");
       headerprinted = true;
     }
+    if ((millis() - savedTime2) >= 100) {
       dataFile.print(rtc.getTime()); // Real-time timestamp
       dataFile.print(",");
       dataFile.println(sensorOutput_Newtons); //should this be idealForce?
-      delay(1000);
-  
+      savedTime2 = millis();
+    }
   }
   //=phase 3 stop and complete screen =
   if ( ((millis() - phase3_RunningTime) >= (phase3_Delay + duration_int * 1000)) && (phase3_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
     idealForce = 0;
     phase3_InProgress = 0;
-    phase1_Start = 0;
+    phase3_Start = 0;
     
     if (phase3_InProgress == 0){
       
