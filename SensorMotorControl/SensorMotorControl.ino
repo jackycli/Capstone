@@ -142,7 +142,7 @@ LcdMenu menu(LCD_ROWS, LCD_COLS);
 #define CURRENTREADPIN 34
 #define SENSORREADPIN 35
 #define RPMREADPIN 32
-#define SLIDERPIN 36  //DOUBLE CHECK PIN FOR SLIDER!!!
+#define SLIDERPIN 26  //DOUBLE CHECK PIN FOR SLIDER!!!
 
 //motorControl past values for filtering
 double yn1 = 0;
