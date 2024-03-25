@@ -157,7 +157,7 @@ LcdMenu menu(LCD_ROWS, LCD_COLS);
 #define CURRENTREADPIN 34
 #define SENSORREADPIN 35
 #define RPMREADPIN 32
-#define SLIDERPIN 26  //DOUBLE CHECK PIN FOR SLIDER!!!
+#define SLIDERPIN 15 //DOUBLE CHECK PIN FOR SLIDER!!!
 #define MicroSD 5
 #define emergencyStop 25
 
@@ -177,7 +177,7 @@ double a[5] = { 1.000000000000000, -2.918393191953221, 2.842867652821765, -0.924
 
 //motorControl software limit
 double rpmLimit = 3800;      //RPM safety ADC value
-double currentLimit = 2000;  //Current safety ADC value
+double currentLimit = 3000;  //Current safety ADC value
 //motorControl error PID terms
 double currentError = 0;     //for P term
 double cumulativeError = 0;  //for I term
@@ -390,8 +390,9 @@ void loop() {  //Loop Starts Here --------------------------------------------
 
     //=phase 3=
   if ((phase3_Start == 1) && ((millis() - phase3_RunningTime) >= phase3_Delay)) {                //when phase 3 selected, get idealForce from Slider
-    sliderOutput= analogRead(SLIDERPIN);
+    
     idealForce = sliderOutput;
+    
     if (headerprinted == false) {
       dataFile.println("Timestamp (ms), Patient Applied Force (N)");
       headerprinted = true;
@@ -424,8 +425,9 @@ void loop() {  //Loop Starts Here --------------------------------------------
     menu.show();
     phase3_ShowTime =0;
   }
-
+  
  
+
   //motor control always on right now, need to seperate sensor reading and motor control
   motorControl (idealForce);
 
@@ -597,6 +599,7 @@ void motorControl(int idealForce) {
 
     //Sensor Read
     double xn = analogRead(SENSORREADPIN);
+    sliderOutput= analogRead(SLIDERPIN);
     //output value
     //4th order difference equation - based on matlab filter order
     //double yn = -a[1]*yn1 - a[2]*yn2 - a[3]*yn3 - a[4]*yn4 + b[0]*xn + b[1]*xn1 + b[2]*xn2 + b[3]*xn3 + b[4]*xn4;
@@ -642,7 +645,7 @@ void motorControl(int idealForce) {
     //Serial.println(currentRead);
 
     //only run of RPM is within bounds
-    if ((rpmRead <= rpmLimit) && (rpmRead >= -rpmLimit) && (safety == 1)) {
+    if (((rpmRead <= rpmLimit) && (rpmRead >= -rpmLimit)) && (safety == 1)) {
       analogWrite(MOTORINPUTPIN, int(motorCurrent));
       Serial.println(int(motorCurrent));
     } else {
@@ -661,15 +664,17 @@ void motorControl(int idealForce) {
     currentError = (idealForce - sensorOutput) / 4095 * 255;
 
     if (idealForce == 0) {  //if statement used to prevent inconsistent controls if idealForce set to 0 for sometime due to the integral controller adding up wrong error. Force sensor does not stay at 0 when Idealforce =0.
-      cumulativeError = -1;
+      cumulativeError = 0;
+      derivativeError = 0;
     } else {
       cumulativeError = cumulativeError + currentError;  //get total error
+      derivativeError = (currentError - previousError);  //difference between current and past error
     }
-    derivativeError = (currentError - previousError);  //difference between current and past error
+    
 
     //apply error and limit motorCurrent to [0,255]
     if (((motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError) <= 255) && ((motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError) >= 0)) {
-      motorCurrent = motorCurrent + Kp * currentError + Ki * cumulativeError;
+      motorCurrent = motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError;
     } else if (motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError > 255) {
       motorCurrent = 255;
     } else if (motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError < 0) {
