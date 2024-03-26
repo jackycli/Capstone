@@ -3,6 +3,18 @@
 #include <ItemList.h>
 #include <ItemSubMenu.h>
 #include <LcdMenu.h>  // Always comes after every item type import
+#include <SPI.h>
+#include <SdFat.h>
+#include <ESP32Time.h>
+
+
+/* Pins */
+const int microSD = 5;
+const int emergencyStop = 25; // Pin for emergency stop button
+
+ESP32Time rtc(3600);  // offset in seconds GMT+1
+#define FILE_BASE_NAME "Data"
+#define error(msg) sd.errorHalt(F(msg))
 
 #define LCD_ROWS 4
 #define LCD_COLS 20
@@ -32,6 +44,9 @@ int enterlast = HIGH;
 int entercurr;
 int uplast = HIGH;
 int upcurr;
+
+
+bool headerprinted = false;
 
 // RANGE SubMenu
 // Declare the array
@@ -142,7 +157,9 @@ LcdMenu menu(LCD_ROWS, LCD_COLS);
 #define CURRENTREADPIN 34
 #define SENSORREADPIN 35
 #define RPMREADPIN 32
-#define SLIDERPIN 26  //DOUBLE CHECK PIN FOR SLIDER!!!
+#define SLIDERPIN 15 //DOUBLE CHECK PIN FOR SLIDER!!!
+#define MicroSD 5
+#define emergencyStop 25
 
 //motorControl past values for filtering
 double yn1 = 0;
@@ -160,7 +177,7 @@ double a[5] = { 1.000000000000000, -2.918393191953221, 2.842867652821765, -0.924
 
 //motorControl software limit
 double rpmLimit = 3800;      //RPM safety ADC value
-double currentLimit = 2000;  //Current safety ADC value
+double currentLimit = 3000;  //Current safety ADC value
 //motorControl error PID terms
 double currentError = 0;     //for P term
 double cumulativeError = 0;  //for I term
@@ -177,6 +194,7 @@ int safety = 1;           //safety latch for when RPM or current (special case, 
 
 double idealForce = 0;           //set force value
 unsigned long savedTime1 = 0;    //Used for specific timing for sampling freq
+unsigned long savedTime2 = 0;   //used for data capturef
 
 
 int lengthForceArray = 0;        //get the length of the array, a constant
@@ -188,6 +206,18 @@ int phase3_Delay = 2000;         //small delay for when phase 2 is selected and 
 
 int idealForceArray[9];
 int idealForceADC[9];
+
+//Data Export Variables
+SdFat sd;        //SD Card Variable
+File dataFile;   //Data File Variable
+bool experimentRunning = true; //controls the overall state of the experiment
+bool initializeSD(); //initializes the SD card for communication. Returns true if initialization is sucessful, false otherwise
+bool initializeDataFile(); //opens a data file on the SD card for writing. It creates a new file named with the timestamp of the experiment start time. Returns true if the file iis sucessfully opened, false otherwise.
+void checkEmergencyStopButton(); //checks if the emergency stop button is pressed. If pressed, it stops the experiment and logs a message indicating the experiment is over. 
+#define FILE_BASE_NAME "Data"
+#define error(msg) sd.errorHalt(F(msg))
+
+double sensorOutput_Newtons;
 
 void setup() {
   // Setup Serial Monitor
@@ -203,7 +233,17 @@ void setup() {
   for (int i = 0; i < (sizeof(b) / sizeof(b[0])); i++) {
     b[i] = b[i] * 0.0001;
   }
-
+    rtc.setTime(0, 0, 1, 24, 3, 2024, 0);  
+  //Initialize SD card
+    if (!initializeSD()) {
+        Serial.println("SD Card initialization failed.");
+        return;
+      }
+// Open data file
+  if (!initializeDataFile()) {
+    Serial.println("Error opening data file.");
+    return;
+  }
   //save start time
   savedTime1 = millis();
 }
@@ -274,6 +314,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
       idealForce = 0;  //else Set force to 0, usually after the sequence is finished.
     }
     phase1_Start = 0;
+    savedTime2 = millis();
   }
   //=phase 1 stop and complete screen=
   if ( ((millis() - phase1_RunningTime) >= (phase1_Delay + duration_int * 1000)) && (phase1_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
@@ -283,7 +324,22 @@ void loop() {  //Loop Starts Here --------------------------------------------
       menu.lcd->setCursor(0, 1);
       menu.lcd->print("Complete!     ");
       phase1_ShowTime = millis();
+      headerprinted = false;
+      dataFile.close();
     }
+  }
+  if (phase1_InProgress == 1) {
+    if (headerprinted == false) {
+      dataFile.println("Timestamp (ms), Applied Force (N)");
+      headerprinted = true;
+    }
+    if ((millis() - savedTime2) >= 100) {
+      dataFile.print(rtc.getTime()); // Real-time timestamp
+      dataFile.print(",");
+      dataFile.println(sensorOutput_Newtons);
+      //delay(1000);
+      savedTime2 = millis();
+  }
   }
   //=phase 1 complete stop and go back to menu=
   if ((millis() - phase1_ShowTime) >= (2000) && (phase1_ShowTime!=0)){ 
@@ -297,6 +353,18 @@ void loop() {  //Loop Starts Here --------------------------------------------
   //=phase 2=
   if ((phase2_Start == 1) && ((millis() - phase2_RunningTime) >= phase2_Delay)) {                //copied paste from phase1, may not be efficient
     //-> RECORD DATA HERE
+    if (headerprinted == false) {
+      dataFile.println("Timestamp (ms), Patient Applied Force (N)");
+      headerprinted = true;
+    }
+    if ((millis() - savedTime2) >= 100) {
+      dataFile.print(rtc.getTime()); // Real-time timestamp
+      dataFile.print(",");
+      dataFile.println(sensorOutput_Newtons);
+      //delay(1000);
+      savedTime2 = millis();
+    }
+  
     idealForce = 0;
   }
   //=phase 2 stop and complete screen =
@@ -308,19 +376,33 @@ void loop() {  //Loop Starts Here --------------------------------------------
       menu.lcd->print("Complete!     ");
       phase2_ShowTime = millis();
       //->STOP DATA RECORD HERE
+      headerprinted = false;
+      dataFile.close();
     }
   }
   //=phase 2 complete stop and go back to menu=
   if ((millis() - phase2_ShowTime) >= (2000) && (phase2_ShowTime!=0)){ 
     menu.show();
     phase2_ShowTime =0;
+    
   }
 
 
     //=phase 3=
   if ((phase3_Start == 1) && ((millis() - phase3_RunningTime) >= phase3_Delay)) {                //when phase 3 selected, get idealForce from Slider
-    sliderOutput= analogRead(SLIDERPIN);
+    
     idealForce = sliderOutput;
+    
+    if (headerprinted == false) {
+      dataFile.println("Timestamp (ms), Patient Applied Force (N)");
+      headerprinted = true;
+    }
+    if ((millis() - savedTime2) >= 100) {
+      dataFile.print(rtc.getTime()); // Real-time timestamp
+      dataFile.print(",");
+      dataFile.println(sensorOutput_Newtons); //should this be idealForce?
+      savedTime2 = millis();
+    }
   }
   //=phase 3 stop and complete screen =
   if ( ((millis() - phase3_RunningTime) >= (phase3_Delay + duration_int * 1000)) && (phase3_InProgress==1))  {  //motor will exert 1 force chosen from above code, and then will exert that for duration_int length, then stop.
@@ -334,6 +416,8 @@ void loop() {  //Loop Starts Here --------------------------------------------
       menu.lcd->print("Complete!     ");
       phase3_ShowTime = millis();
       //->STOP DATA RECORD HERE
+      headerprinted = false;
+      dataFile.close();
     }
   }
   //=phase 3 complete stop and go back to menu=
@@ -341,8 +425,9 @@ void loop() {  //Loop Starts Here --------------------------------------------
     menu.show();
     phase3_ShowTime =0;
   }
-
+  
  
+
   //motor control always on right now, need to seperate sensor reading and motor control
   motorControl (idealForce);
 
@@ -514,6 +599,7 @@ void motorControl(int idealForce) {
 
     //Sensor Read
     double xn = analogRead(SENSORREADPIN);
+    sliderOutput= analogRead(SLIDERPIN);
     //output value
     //4th order difference equation - based on matlab filter order
     //double yn = -a[1]*yn1 - a[2]*yn2 - a[3]*yn3 - a[4]*yn4 + b[0]*xn + b[1]*xn1 + b[2]*xn2 + b[3]*xn3 + b[4]*xn4;
@@ -540,7 +626,9 @@ void motorControl(int idealForce) {
       sensorOutput = 0;
     }
     Serial.print(sensorOutput);
+    sensorOutput_Newtons = sqrt((sensorOutput+2974.23062)/29.9836)-9.93496445;
     Serial.print(",");
+    Serial.print(sensorOutput_Newtons);
 
     //Motor control
 
@@ -557,7 +645,7 @@ void motorControl(int idealForce) {
     //Serial.println(currentRead);
 
     //only run of RPM is within bounds
-    if ((rpmRead <= rpmLimit) && (rpmRead >= -rpmLimit) && (safety == 1)) {
+    if (((rpmRead <= rpmLimit) && (rpmRead >= -rpmLimit)) && (safety == 1)) {
       analogWrite(MOTORINPUTPIN, int(motorCurrent));
       Serial.println(int(motorCurrent));
     } else {
@@ -576,15 +664,22 @@ void motorControl(int idealForce) {
     currentError = (idealForce - sensorOutput) / 4095 * 255;
 
     if (idealForce == 0) {  //if statement used to prevent inconsistent controls if idealForce set to 0 for sometime due to the integral controller adding up wrong error. Force sensor does not stay at 0 when Idealforce =0.
-      cumulativeError = -1;
-    } else {
-      cumulativeError = cumulativeError + currentError;  //get total error
+      cumulativeError = 0;
+      derivativeError = 0;
     }
-    derivativeError = (currentError - previousError);  //difference between current and past error
+    else if (abs(currentError)<0.1*idealForce){ //used to prevent integral windup during the transient response, which created steadystate error
+      cumulativeError = 0;
+      derivativeError = (currentError - previousError);
+    }
+     else {
+      cumulativeError = cumulativeError + currentError;  //get total error
+      derivativeError = (currentError - previousError);  //difference between current and past error
+    }
+    
 
     //apply error and limit motorCurrent to [0,255]
     if (((motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError) <= 255) && ((motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError) >= 0)) {
-      motorCurrent = motorCurrent + Kp * currentError + Ki * cumulativeError;
+      motorCurrent = motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError;
     } else if (motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError > 255) {
       motorCurrent = 255;
     } else if (motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError < 0) {
@@ -603,5 +698,67 @@ void shuffleArray(double arr[], int n) {
     double temp = arr[i];
     arr[i] = arr[j];
     arr[j] = temp;
+  }
+}
+
+/* initializeSD Function: initializes the SD card for communication. 
+Returns true if initialization is sucessful, false otherwise */
+bool initializeSD() {
+  return sd.begin(microSD, SPI_HALF_SPEED);
+}
+
+/* initializeDataFile Function: opens a data file on the SD card for writing. 
+It creates a new file named with the timestamp of the experiment start time. 
+Returns true if the file iis sucessfully opened, false otherwise. */
+// bool initializeDataFile() {
+  
+
+//   dataFile = sd.open("test02.csv", FILE_WRITE);
+//   if (dataFile) {
+//     // //writeHeaders();
+//     dataFile.println("Time(ms), FSR Value");
+//     Serial.println("Header written to file.");
+//     //dataFile.close();
+//     return true;
+//   }
+//   return false;
+// }
+
+/* initializeDataFile Function: opens a data file on the SD card for writing.
+It creates a new file named with the timestamp of the experiment start time.
+Returns true if the file is successfully opened, false otherwise. */
+
+bool initializeDataFile() {
+  //String filename = "test04.csv"; // Default filename
+  
+  const uint8_t BASE_NAME_SIZE = sizeof(FILE_BASE_NAME) - 1;
+  char fileName[13] = FILE_BASE_NAME "00.csv";
+
+  // Find an unused file name.
+  if (BASE_NAME_SIZE > 6) {
+    error("FILE_BASE_NAME too long");
+  }
+  while (sd.exists(fileName)) {
+    if (fileName[BASE_NAME_SIZE + 1] != '9') {
+      fileName[BASE_NAME_SIZE + 1]++;
+    } else if (fileName[BASE_NAME_SIZE] != '9') {
+      fileName[BASE_NAME_SIZE + 1] = '0';
+      fileName[BASE_NAME_SIZE]++;
+    } else {
+      error("Can't create file name");
+    }
+  }
+  if (!dataFile.open(fileName, O_WRONLY | O_CREAT | O_EXCL)) {
+    error("file.open");
+  }
+  return false;
+}
+
+/* checkEmergencyStopButton Function: checks if the emergency stop button is pressed. 
+If pressed, it stops the experiment and logs a message indicating the experiment is over. */
+void checkEmergencyStopButton() {
+  if (digitalRead(emergencyStop) == LOW) {
+    experimentRunning = false;
+    Serial.println("Emergency stop button activated. Experiment is over and Data has been successfully saved");
   }
 }
