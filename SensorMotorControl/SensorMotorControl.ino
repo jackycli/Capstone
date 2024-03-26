@@ -192,7 +192,7 @@ double b[5] = { 0.213398512073359, 0.640195536174559, 0.640195536307786, 0.21339
 double a[5] = { 1.000000000000000, -2.918393191953221, 2.842867652821765, -0.924303742058885 };
 
 //motorControl software limit
-double rpmLimit = 3800;      //RPM safety ADC value
+double rpmLimit = 2000;      //RPM safety ADC value
 double currentLimit = 3000;  //Current safety ADC value
 //motorControl error PID terms
 double currentError = 0;     //for P term
@@ -201,9 +201,9 @@ double previousError = 0;    //for D term
 double derivativeError = 0;  //for D term
 
 //motorControl error constants CHANGE THEM HERE; OR CHANGE THE ACTUAL LOGIC DOWN IN MOTOR CONTROLLER ERROR TERMS (Section: get Error)
-double Kp = 0.008;
+double Kp = 0.010;
 double Ki = 0.000001;
-double Kd = 0.0000001;
+double Kd = 0.000001;
 //motorControl items
 double motorCurrent = 0;  //DAC value
 int safety = 0;           //safety latch for when RPM or current (special case, see motorcontrol section) goes over limit. Need to reset esp32 to reset
@@ -511,35 +511,28 @@ void loop() {  //Loop Starts Here --------------------------------------------
 // CALLBACK FUNCTIONS
 void rangeCallback(uint16_t ran) {
   // do something with the index
-  //Serial.print("String: ");
-  //Serial.println(range[ran]);
 
-  // convert string found at index 'ran' to int
   range_int = (range[ran]).toInt();
-  //Serial.print("Range (N): 0.5-");
-  //Serial.println(range_int);
+
 }
 
 void repetitionsCallback(uint16_t reps) {
   // do something with the index
-  //Serial.print("String: ");
-  //Serial.println(repetitions[reps]);
+
 
   // convert string found at index 'reps' to int
   repetitions_int = (repetitions[reps]).toInt();
-  //Serial.print("Repetitions: ");
-  Serial.println(repetitions_int);
+
 }
 
 void durationCallback(uint16_t dur) {
   // do something with the index
-  //Serial.print("String: ");
-  //Serial.println(duration[dur]);
+
 
   // convert string found at index 'dur' to int
   duration_int = (duration[dur]).toInt();
-  //Serial.print("Duration (s): ");
-  Serial.println(duration_int);
+
+
 }
 
 void phase1Callback(uint16_t phas1) {
@@ -602,9 +595,8 @@ void phase3Callback(uint16_t phas3) {
 }
 
 void safetyCallback(uint16_t safe) {
-  if (safe == 1) {   // if 2nd index string is selected (Yes)
+  if (safe == 0) {   // if 2nd index string is selected (Yes)
     safety_reset = 1;
- 
   }
   // Serial.println(phase3_Start);
   //phas2 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 2 SUBMENU
@@ -658,28 +650,31 @@ void motorControl(int idealForce) {
     //Motor control
 
     //Read analog RPM values from Motor Controller
-    //Serial.print("Digital RPM Value = ");
     int rpmRead = analogRead(RPMREADPIN);
-    // Serial.print("RPM Read Value: ");
-    // Serial.println(rpmRead);
+    // Serial.print(",");
+    // Serial.print(rpmRead);
 
     //Read analog current values from Motor Controller
-    //Serial.print("Digital Current Value = ");
-    int currentRead = analogRead(CURRENTREADPIN);
-    //Serial.print("Current Read Value: ");
-    //Serial.println(currentRead);
 
+    int currentRead = analogRead(CURRENTREADPIN);
+    // Serial.print(",");
+    // Serial.print(currentRead);
+
+    Serial.print(",");
+    Serial.print(safety);
     //only run if safety is off
     if (safety == 0) {
       analogWrite(MOTORINPUTPIN, int(motorCurrent));
-      Serial.println(int(motorCurrent));
+      Serial.print(",");
+      Serial.println((int)motorCurrent);
     } else {
       analogWrite(MOTORINPUTPIN, 0);
+      Serial.print(",");
       Serial.println("SAFETY");
       
     }
     //if sensor feels zero when supplied current, stop current from growing. Used to prevent the addition of force when finger isnt on properly.
-    if ( ((sensorOutput <= 1000) && (currentRead >= currentLimit)) || ((rpmRead <= rpmLimit) && (rpmRead >= -rpmLimit)) ) {
+    if ( ((sensorOutput <= 1000) && (currentRead >= currentLimit)) || ((rpmRead >= rpmLimit) || (rpmRead <= -rpmLimit)) ) {
       safety = 1;  //Safety Latch
     }
     
@@ -688,6 +683,7 @@ void motorControl(int idealForce) {
       if (safety_reset ==1){
         safety = 0;
         safety_reset = 0;
+        motorCurrent = 0;
       }
     }
     
@@ -701,12 +697,12 @@ void motorControl(int idealForce) {
       cumulativeError = 0;
       derivativeError = 0;
     }
-    else if (abs(currentError)<0.1*idealForce){ //used to prevent integral windup during the transient response, which created steadystate error
-      cumulativeError = 0;
+    else if (abs(currentError)<0.25*idealForce){ //used to prevent integral windup during the transient response, which created steadystate error
+      cumulativeError = cumulativeError + currentError;
       derivativeError = (currentError - previousError);
     }
      else {
-      cumulativeError = cumulativeError + currentError;  //get total error
+      cumulativeError = 0;  //get total error
       derivativeError = (currentError - previousError);  //difference between current and past error
     }
     
@@ -714,11 +710,17 @@ void motorControl(int idealForce) {
     //apply error and limit motorCurrent to [0,255]
     if (((motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError) <= 255) && ((motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError) >= 0)) {
       motorCurrent = motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError;
-    } else if (motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError > 255) {
+    } else if ((motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError) > 255) {
       motorCurrent = 255;
-    } else if (motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError < 0) {
+    } else if ((motorCurrent + Kp * currentError + Ki * cumulativeError + Kd * derivativeError) < 0) {
       motorCurrent = 0;
     }
+    // Serial.print(",");
+    // Serial.print(currentError);
+    // Serial.print(",");
+    // Serial.print(cumulativeError);
+    // Serial.print(",");
+    // Serial.println(derivativeError);
   }
 }
 
