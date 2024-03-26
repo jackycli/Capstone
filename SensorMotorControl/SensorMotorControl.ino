@@ -7,6 +7,8 @@
 #include <SdFat.h>
 #include <ESP32Time.h>
 
+const uint8_t BASE_NAME_SIZE = 26; // Length of "ExperimentXX"
+uint8_t experimentNumber = 1; // Initialize experiment number
 
 /* Pins */
 const int microSD = 5;
@@ -47,6 +49,7 @@ int upcurr;
 
 
 bool headerprinted = false;
+bool fileCreated = false;
 
 // RANGE SubMenu
 // Declare the array
@@ -228,7 +231,7 @@ SdFat sd;        //SD Card Variable
 File dataFile;   //Data File Variable
 bool experimentRunning = true; //controls the overall state of the experiment
 bool initializeSD(); //initializes the SD card for communication. Returns true if initialization is sucessful, false otherwise
-bool initializeDataFile(); //opens a data file on the SD card for writing. It creates a new file named with the timestamp of the experiment start time. Returns true if the file iis sucessfully opened, false otherwise.
+bool initializeDataFile(uint8_t phase); //opens a data file on the SD card for writing. It creates a new file named with the timestamp of the experiment start time. Returns true if the file iis sucessfully opened, false otherwise.
 void checkEmergencyStopButton(); //checks if the emergency stop button is pressed. If pressed, it stops the experiment and logs a message indicating the experiment is over. 
 #define FILE_BASE_NAME "Data"
 #define error(msg) sd.errorHalt(F(msg))
@@ -255,11 +258,11 @@ void setup() {
         Serial.println("SD Card initialization failed.");
         return;
       }
-// Open data file
-  if (!initializeDataFile()) {
-    Serial.println("Error opening data file.");
-    return;
-  }
+// // Open data file
+//   if (!initializeDataFile()) {
+//     Serial.println("Error opening data file.");
+//     return;
+//   }
   //save start time
   savedTime1 = millis();
 }
@@ -344,11 +347,22 @@ void loop() {  //Loop Starts Here --------------------------------------------
       dataFile.close();
     }
   }
-  if (phase1_InProgress == 1) {
-    if (headerprinted == false) {
-      dataFile.println("Timestamp (ms), Applied Force (N)");
-      headerprinted = true;
+   if (phase1_InProgress == 1 && !fileCreated){
+    // Create a new file for phase 1
+        if (!initializeDataFile(1)) {
+            Serial.println("Error opening data file for phase 1.");
+            return;
+        }
+        // Write header information to the file
+        dataFile.println("Timestamp (ms), Applied Force (N)");
+        fileCreated = true; // Mark the file as created for phase 1
     }
+  
+  if (phase1_InProgress == 1) {
+    // if (headerprinted == false) {
+    //   dataFile.println("Timestamp (ms), Applied Force (N)");
+    //   headerprinted = true;
+    // }
     if ((millis() - savedTime2) >= 100) {
       dataFile.print(rtc.getTime()); // Real-time timestamp
       dataFile.print(",");
@@ -361,18 +375,25 @@ void loop() {  //Loop Starts Here --------------------------------------------
   if ((millis() - phase1_ShowTime) >= (2000) && (phase1_ShowTime!=0)){ 
     menu.show();
     phase1_ShowTime =0;
+    fileCreated = false;
   }
 
 
 
 
   //=phase 2=
+  if (phase2_Start == 1 && !fileCreated){
+    // Create a new file for phase 1
+        if (!initializeDataFile(2)) {
+            Serial.println("Error opening data file for phase 1.");
+            return;
+        }
+        // Write header information to the file
+      dataFile.println("Timestamp (ms), Patient Applied Force (N)");
+        fileCreated = true; // Mark the file as created for phase 1
+    }
   if ((phase2_Start == 1) && ((millis() - phase2_RunningTime) >= phase2_Delay)) {                //copied paste from phase1, may not be efficient
     //-> RECORD DATA HERE
-    if (headerprinted == false) {
-      dataFile.println("Timestamp (ms), Patient Applied Force (N)");
-      headerprinted = true;
-    }
     if ((millis() - savedTime2) >= 100) {
       dataFile.print(rtc.getTime()); // Real-time timestamp
       dataFile.print(",");
@@ -393,6 +414,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
       phase2_ShowTime = millis();
       //->STOP DATA RECORD HERE
       headerprinted = false;
+      fileCreated = false;
       dataFile.close();
     }
   }
@@ -405,14 +427,24 @@ void loop() {  //Loop Starts Here --------------------------------------------
 
 
     //=phase 3=
+  if (phase3_Start == 1 && !fileCreated){
+    // Create a new file for phase 1
+        if (!initializeDataFile(3)) {
+            Serial.println("Error opening data file for phase 3.");
+            return;
+        }
+        // Write header information to the file
+      dataFile.println("Timestamp (ms), Slider Applied Force (N)");
+        fileCreated = true; // Mark the file as created for phase 1
+    }
   if ((phase3_Start == 1) && ((millis() - phase3_RunningTime) >= phase3_Delay)) {                //when phase 3 selected, get idealForce from Slider
     
     idealForce = sliderOutput;
     
-    if (headerprinted == false) {
-      dataFile.println("Timestamp (ms), Patient Applied Force (N)");
-      headerprinted = true;
-    }
+    // if (headerprinted == false) {
+    //   dataFile.println("Timestamp (ms), Patient Applied Force (N)");
+    //   headerprinted = true;
+    // }
     if ((millis() - savedTime2) >= 100) {
       dataFile.print(rtc.getTime()); // Real-time timestamp
       dataFile.print(",");
@@ -433,6 +465,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
       phase3_ShowTime = millis();
       //->STOP DATA RECORD HERE
       headerprinted = false;
+      fileCreated = false;
       dataFile.close();
     }
   }
@@ -764,12 +797,39 @@ Returns true if the file iis sucessfully opened, false otherwise. */
 It creates a new file named with the timestamp of the experiment start time.
 Returns true if the file is successfully opened, false otherwise. */
 
-bool initializeDataFile() {
-  //String filename = "test04.csv"; // Default filename
+// bool initializeDataFile() {
+//   //String filename = "test04.csv"; // Default filename
   
-  const uint8_t BASE_NAME_SIZE = sizeof(FILE_BASE_NAME) - 1;
-  char fileName[13] = FILE_BASE_NAME "00.csv";
+//   const uint8_t BASE_NAME_SIZE = sizeof(FILE_BASE_NAME) - 1;
+//   char fileName[13] = FILE_BASE_NAME "00.csv";
 
+//   // Find an unused file name.
+//   if (BASE_NAME_SIZE > 6) {
+//     error("FILE_BASE_NAME too long");
+//   }
+//   while (sd.exists(fileName)) {
+//     if (fileName[BASE_NAME_SIZE + 1] != '9') {
+//       fileName[BASE_NAME_SIZE + 1]++;
+//     } else if (fileName[BASE_NAME_SIZE] != '9') {
+//       fileName[BASE_NAME_SIZE + 1] = '0';
+//       fileName[BASE_NAME_SIZE]++;
+//     } else {
+//       error("Can't create file name");
+//     }
+//   }
+//   if (!dataFile.open(fileName, O_WRONLY | O_CREAT | O_EXCL)) {
+//     error("file.open");
+//   }
+//   return false;
+// }
+
+bool initializeDataFile(uint8_t phase) {  
+  const uint8_t BASE_NAME_SIZE = sizeof(FILE_BASE_NAME) - 1;
+  char fileName[26]; // Adjusted size to accommodate the longer string
+
+  // Construct file name with experiment number and phase
+  sprintf(fileName, "Data%02d_Phase%d.csv", experimentNumber, phase);
+if (!fileCreated){
   // Find an unused file name.
   if (BASE_NAME_SIZE > 6) {
     error("FILE_BASE_NAME too long");
@@ -784,11 +844,18 @@ bool initializeDataFile() {
       error("Can't create file name");
     }
   }
-  if (!dataFile.open(fileName, O_WRONLY | O_CREAT | O_EXCL)) {
+  if (!dataFile.open(fileName, O_WRONLY | O_CREAT)) {
     error("file.open");
+    return false;
   }
-  return false;
 }
+
+  // Increment experiment number for the next file
+  experimentNumber++;
+
+  return true; // Return true if the file is successfully opened
+}
+
 
 /* checkEmergencyStopButton Function: checks if the emergency stop button is pressed. 
 If pressed, it stops the experiment and logs a message indicating the experiment is over. */
