@@ -358,7 +358,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
         fileCreated = true; // Mark the file as created for phase 1
     }
   
-  if (phase1_InProgress == 1) {
+  if (phase1_InProgress == 1 && ((millis() - phase1_RunningTime) >= phase1_Delay) ) {
     // if (headerprinted == false) {
     //   dataFile.println("Timestamp (ms), Applied Force (N)");
     //   headerprinted = true;
@@ -369,7 +369,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
       dataFile.println(sensorOutput_Newtons);
       //delay(1000);
       savedTime2 = millis();
-  }
+    }
   }
   //=phase 1 complete stop and go back to menu=
   if ((millis() - phase1_ShowTime) >= (2000) && (phase1_ShowTime!=0)){ 
