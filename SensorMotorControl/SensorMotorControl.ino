@@ -81,6 +81,11 @@ extern String phase3[];
 // Initialize the array
 String phase3[] = { "No", "Yes" };
 
+// RESET SAFETY SubMenu
+extern String phase3[];
+// Initialize the array
+String safety_array[] = { "Yes" };
+
 // Declare the call back function
 void rangeCallback(uint16_t ran);
 void repetitionsCallback(uint16_t reps);
@@ -88,11 +93,15 @@ void durationCallback(uint16_t dur);
 void phase1Callback(uint16_t phas1);
 void phase2Callback(uint16_t phas2);
 void phase3Callback(uint16_t phas3);
+void safetyCallback(uint16_t safe);
+
 
 //Values received from UI, saved to use for the program
 int range_int = 0;
 int repetitions_int = 0;
 int duration_int = 0;
+
+int safety_reset = 0;
 
 //Prev current counters, used to show that a range was selected. However, the researcher cannot reselect the same range.
 int prev_range = 0;
@@ -119,6 +128,8 @@ extern MenuItem* durationMenu[];
 extern MenuItem* phase1Menu[];
 extern MenuItem* phase2Menu[];
 extern MenuItem* phase3Menu[];
+extern MenuItem* safetyMenu[];
+
 
 MAIN_MENU(  // DON'T FORGET THE COMMA !!!!!!!
   ITEM_SUBMENU("Range (N)", rangeMenu),
@@ -126,7 +137,9 @@ MAIN_MENU(  // DON'T FORGET THE COMMA !!!!!!!
   ITEM_SUBMENU("Duration", durationMenu),
   ITEM_SUBMENU("Phase 1", phase1Menu),
   ITEM_SUBMENU("Phase 2", phase2Menu),
-  ITEM_SUBMENU("Phase 3", phase3Menu));
+  ITEM_SUBMENU("Phase 3", phase3Menu),
+  ITEM_SUBMENU("Reset Safety", safetyMenu));
+
 
 /**
  * Create submenu and precise its parent
@@ -148,6 +161,9 @@ SUB_MENU(phase2Menu, mainMenu,
 
 SUB_MENU(phase3Menu, mainMenu,
          ITEM_STRING_LIST("Start test?", phase3, 2, phase3Callback));
+
+SUB_MENU(safetyMenu, mainMenu,
+         ITEM_STRING_LIST("Reset Safety?", safety_array, 1, safetyCallback));
 
 LcdMenu menu(LCD_ROWS, LCD_COLS);
 
@@ -190,7 +206,7 @@ double Ki = 0.000001;
 double Kd = 0.0000001;
 //motorControl items
 double motorCurrent = 0;  //DAC value
-int safety = 1;           //safety latch for when RPM or current (special case, see motorcontrol section) goes over limit. Need to reset esp32 to reset
+int safety = 0;           //safety latch for when RPM or current (special case, see motorcontrol section) goes over limit. Need to reset esp32 to reset
 
 double idealForce = 0;           //set force value
 unsigned long savedTime1 = 0;    //Used for specific timing for sampling freq
@@ -585,6 +601,15 @@ void phase3Callback(uint16_t phas3) {
   //phas2 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 2 SUBMENU
 }
 
+void safetyCallback(uint16_t safe) {
+  if (safe == 1) {   // if 2nd index string is selected (Yes)
+    safety_reset = 1;
+ 
+  }
+  // Serial.println(phase3_Start);
+  //phas2 = 0; FIGURE OUT HOW TO RESET BACK TO "NO" IN PHASE 2 SUBMENU
+}
+
 // MOTOR CONTROL
 void motorControl(int idealForce) {
   //set ideal force
@@ -644,19 +669,28 @@ void motorControl(int idealForce) {
     //Serial.print("Current Read Value: ");
     //Serial.println(currentRead);
 
-    //only run of RPM is within bounds
-    if (((rpmRead <= rpmLimit) && (rpmRead >= -rpmLimit)) && (safety == 1)) {
+    //only run if safety is off
+    if (safety == 0) {
       analogWrite(MOTORINPUTPIN, int(motorCurrent));
       Serial.println(int(motorCurrent));
     } else {
       analogWrite(MOTORINPUTPIN, 0);
       Serial.println("SAFETY");
-      safety = 0;  //Safety Latch
+      
     }
     //if sensor feels zero when supplied current, stop current from growing. Used to prevent the addition of force when finger isnt on properly.
-    if ((sensorOutput <= 500) && (currentRead >= currentLimit)) {
-      safety = 0;  //Safety Latch
+    if ( ((sensorOutput <= 1000) && (currentRead >= currentLimit)) || ((rpmRead <= rpmLimit) && (rpmRead >= -rpmLimit)) ) {
+      safety = 1;  //Safety Latch
     }
+    
+    //reset safety via UI menu
+    if (safety == 1){
+      if (safety_reset ==1){
+        safety = 0;
+        safety_reset = 0;
+      }
+    }
+    
 
     //get Error
     previousError = currentError;  //saves previous error
