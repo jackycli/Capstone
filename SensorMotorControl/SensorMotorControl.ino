@@ -666,7 +666,12 @@ void motorControl(int idealForce) {
     if (idealForce == 0) {  //if statement used to prevent inconsistent controls if idealForce set to 0 for sometime due to the integral controller adding up wrong error. Force sensor does not stay at 0 when Idealforce =0.
       cumulativeError = 0;
       derivativeError = 0;
-    } else {
+    }
+    else if (abs(currentError)<0.1*idealForce){ //used to prevent integral windup during the transient response, which created steadystate error
+      cumulativeError = 0;
+      derivativeError = (currentError - previousError);
+    }
+     else {
       cumulativeError = cumulativeError + currentError;  //get total error
       derivativeError = (currentError - previousError);  //difference between current and past error
     }
