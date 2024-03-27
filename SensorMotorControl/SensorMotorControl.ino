@@ -319,7 +319,7 @@ void loop() {  //Loop Starts Here --------------------------------------------
   //=phase 1=
   if ((phase1_Start == 1) && ((millis() - phase1_RunningTime) >= phase1_Delay) && (lengthForceArray > 0)) {                //gets ideal force on Phase 1, with a delay of phase1_Delay, and range has been selected
     if ((idealForceArrayCounter < lengthForceArray) && (idealForceADC[idealForceArrayCounter] > 0)) {              //if counter is less than total length of the look up table, and if the Force value is greater than 0, do this:
-      idealForce = idealForceADC[idealForceArrayCounter];                                                          //set ideal force to value i in look up table
+      idealForce = idealForceADC[idealForceArrayCounter];                                                          //set ideal force to value idealForceArrayCounter in look up table
       idealForceArrayCounter++;                                                                                    //increment counter
     } else if ((idealForceADC[idealForceArrayCounter] <= 0) && (idealForceArrayCounter < lengthForceArray - 1)) {  //else if Force value is less than 0, and counter is less than length-1, skip it until we hit a positive Force value
       while ((idealForceADC[idealForceArrayCounter] <= 0) && (idealForceArrayCounter < lengthForceArray - 1)) {    //skipping part
